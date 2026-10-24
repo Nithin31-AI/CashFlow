@@ -5,75 +5,51 @@ This document defines the prioritized continuation roadmap for developers and AI
 ---
 
 ## A. Current Stage
-- **Development Stage**: **Stage 3 Completed & Transitioning to Stage 4**
+- **Development Stage**: **Stage 4: Production Readiness, Authentication Enhancements, Dockerization, Deployment Preparation, Security Validation, and Product Cleanup (COMPLETED & VERIFIED)**
   - **Stage 1 Status**: Complete and Verified (Foundation, Database, Security, Financial Data Import).
   - **Stage 2 Status**: Complete and Verified (Financial Engine, Reconciliation, Multi-Horizon Forecasting, Risk Prediction, Spatial UI, Dual Theme Support, Theme-Aware Logos, and Multiple-File Uploads).
   - **Stage 3 Status**: Complete and Verified (Advanced AI, Monte Carlo Simulation, Financial Decision Optimisation, Conversational AI Assistant, Configurable Alerts, and Canonical Sage Green Branding).
-  - **Stage 4 Target**: Bank Integrations (Open Banking Feeds), Cloud Deployment, Automated CI/CD, and Production Hardening.
+  - **Stage 4 Status**: Complete and Verified (Google Authentication with official GIS flow and server-side validation, Password Visibility Toggles on Sign-In & Sign-Up, Official Tagline update, Removal of internal stage references from customer-facing UI, Production Multi-stage Dockerization for backend and frontend, Docker Compose with PostgreSQL 16 & persistent volumes, Security Validation, and Full Test Suite passes).
 
 ---
 
-## B. Current Task
-**Stage 3 Verification Complete & Preparation for Stage 4 Planning**
+## B. Completed Stage 4 Deliverables
+- [x] **Google Authentication**:
+  - Implemented `POST /api/v1/auth/google` and `GET /api/v1/auth/google/config`.
+  - Server-side ID token verification using `google.oauth2.id_token` validating audience, issuer, and email verification claims.
+  - Automatic business workspace creation for newly registered Google users.
+  - Safe account linking for existing email/password accounts with matching verified email.
+  - Reusable frontend `GoogleSignInButton.tsx` with official Google multi-color SVG and informative error states.
+- [x] **Password Visibility Toggle**:
+  - Added Eye/EyeOff show/hide password buttons to sign-in and sign-up pages.
+  - Independent visibility toggle on both Password and Confirm Password inputs.
+  - Keyboard accessible, screen-reader friendly (`aria-label`), `type="button"` preventing accidental form submission.
+- [x] **Official Tagline & Customer UI Cleanup**:
+  - Replaced stage promotional text on login and sign-up pages with official tagline: *"Turn financial data into confident business decisions."*
+  - Removed all user-facing references to "Stage 1", "Stage 2", "Stage 3", "Stage 4" from landing page, dashboard, and decisions pages.
+- [x] **Production Dockerization**:
+  - `backend/Dockerfile`: Multi-stage build with unprivileged `appuser` (non-root), `libpq-dev`, `curl` healthcheck, and `psycopg2-binary` support.
+  - `frontend/Dockerfile`: Multi-stage build with unprivileged `nextjs` user (non-root), production optimization, and container healthcheck.
+  - `docker-compose.yml`: PostgreSQL 16 Alpine, unexposed db port to host, healthcheck dependencies, service-to-service networking, named persistent volumes (`postgres_data`, `backend_uploads`).
+  - `.dockerignore` for both frontend and backend excluding `.env`, `.git`, caches, and uploads.
+- [x] **Production Security Validation**:
+  - Zero hardcoded secrets; documented `.env.example`.
+  - Cleaned repository index by untracking compiled `.pyc` and local `.db` files; created root `.gitignore`.
+  - Tenant isolation verified on all queries; password hashing via Bcrypt; tokenized timing-safe password recovery.
+- [x] **Full Automated & Runtime Testing**:
+  - Pytest: **30 passed out of 30 tests in 20.32s**.
+  - TypeScript: `npx tsc --noEmit` exited with **code 0 (zero errors)**.
+  - Production Build: `npm run build` compiled all 23 routes with **code 0**.
+  - Browser subagent verified login, register, password visibility, tagline, and dashboard.
 
 ---
 
-## C. Completed Stage 3 Subtasks
-- [x] Standardized on single Canonical Sage Green (`#8A9A78`) across both dark and light modes.
-- [x] Extracted high-resolution official CF monogram and configured browser favicon (`favicon.ico` / `cashflow-favicon.png`).
-- [x] Created database models and applied Alembic migration `b2c3d4e5f6a7_stage3_advanced_ai_simulation.py`:
-  - `financial_goals`, `simulation_runs`, `saved_scenarios`, `optimisation_plans`, `financial_recommendations`, `alert_rules`, `alert_events`, `model_evaluations`.
-- [x] Implemented `simulation_service.py`:
-  - 1000 stochastic cash flow paths, daily percentile envelopes (P10, P25, P50, P75, P90).
-  - Seed reproducibility, reserve breach probability, expected shortfall, potential shortage day.
-- [x] Implemented `decision_service.py`:
-  - Goals management (hard vs soft constraints), interactive scenario modeling (delay days, collection %, expense multiplier, CapEx).
-  - Constrained decision optimization solver balancing cash preservation against operating goals.
-  - Explainable financial recommendations with severity, estimated impact, reasoning, disadvantages, and assumptions.
-- [x] Implemented `alert_service.py`:
-  - Configurable alert rules (`RESERVE_BREACH`, `OVERDUE_INVOICES`, `EXPENSE_SPIKE`, `CASH_DEFICIT`).
-  - 24h / 48h duplicate suppression window.
-  - Acknowledge and resolve event workflows.
-- [x] Implemented `assistant_service.py`:
-  - Grounded tool-calling architecture (`get_actual_cash_balance`, `get_overdue_invoices`, `get_forecast_summary`, `get_simulation_summary`, `get_recommendations`).
-  - Prompt injection defense and zero-hallucinated math.
-  - Transparent evidence citations and assumptions notes.
-- [x] Built frontend views:
-  - `/simulation`: Monte Carlo simulation interface with parameter sliders, P10/P50/P90 cards, breach risk %, and daily percentile envelope.
-  - `/decisions`: Goals & constraints, custom scenario simulator & side-by-side comparison, constrained optimisation plan with user confirmation, and explainable recommendations.
-  - `/assistant`: Conversational assistant with quick prompt pills, evidence citations badges, and assumptions note.
-  - `/alerts`: Active alerts stream, acknowledge/resolve actions, "Evaluate Alerts Now" trigger, and configurable rules table.
-- [x] Automated test suite: **25 passed out of 25 tests** (`python -m pytest tests -v` in 14.24s).
-- [x] Frontend type-checking: **`npx tsc --noEmit` exited with code 0 (zero errors)**.
-- [x] Verified full browser runtime with interactive recording (`stage3_verification_1792867272444.webp`).
-
----
-
-## D. Roadmap for Stage 4
-
-### 1. Open Banking & Bank Feed Integrations (Priority 1)
-- [ ] Implement bank feed connectors (e.g. Plaid / Yodlee / Setu sandbox integrations).
-- [ ] Automated scheduled transaction synchronization.
-- [ ] Webhook ingest and idempotency tracking.
-
-### 2. Production Cloud Infrastructure & Deployment (Priority 2)
-- [ ] Docker containerization (multi-stage builds for frontend and backend).
-- [ ] Production PostgreSQL setup with connection pooling (`pgbouncer`).
-- [ ] Redis caching for forecast and simulation runs.
-- [ ] Automated CI/CD pipeline (GitHub Actions).
-
-### 3. Enterprise Hardening & Observability (Priority 3)
-- [ ] Structured JSON logging and OpenTelemetry tracing.
-- [ ] Rate limiting per IP and per tenant (`slowapi` or Redis token bucket).
-- [ ] Zero-downtime database migration strategy.
-
----
-
-## E. Current Blockers
-- **None**: No active technical blockers exist.
-
----
-
-## F. Recommended Next Action
-1. Review Stage 3 implementation report with user.
-2. Formulate and begin Stage 4 planning upon user prompt.
+## C. Remaining Manual Deployment Steps (User Machine)
+1. **Google Cloud Console Setup**:
+   - Create OAuth 2.0 Client ID (Web Application) at https://console.cloud.google.com/apis/credentials.
+   - Set Authorized JavaScript Origins: `http://localhost:3000` (and your production domain).
+   - Set Authorized Redirect URIs: `http://localhost:3000/api/auth/callback/google` (and your production domain).
+   - Copy Client ID and Secret to `.env` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`).
+2. **Container Registry Image Build & Push**:
+   - Log in to Docker registry: `docker login`
+   - Build, tag, and push images using documented commands.

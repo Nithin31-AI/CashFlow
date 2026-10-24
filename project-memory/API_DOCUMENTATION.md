@@ -65,6 +65,22 @@ This document describes the actual FastAPI REST endpoints implemented in the app
 - **Source**: `backend/app/api/v1/auth.py`
 - **Test Status**: `VERIFIED` (`tests/test_auth.py`).
 
+### 1.6 `GET /api/v1/auth/google/config`
+- **Purpose**: Retrieve public Google OAuth client ID and enabled status for frontend Google Identity Services initialization.
+- **Auth**: Public.
+- **Response**: `200 OK` -> `{"client_id": "...", "enabled": true}`.
+- **Source**: `backend/app/api/v1/auth.py`
+- **Test Status**: `VERIFIED` (`tests/test_auth.py`).
+
+### 1.7 `POST /api/v1/auth/google`
+- **Purpose**: Authenticate user via Google ID Token (JWT) issued by Google Identity Services. Validates signature, audience, and email verification claims on the server. If user is new, automatically registers them and generates their initial workspace. If user exists, links and authenticates them securely.
+- **Auth**: Public.
+- **Request Body**: `{"credential": "<google_id_token>"}`.
+- **Response**: `200 OK` -> `Token` (`access_token`, `token_type`, `user`).
+- **Errors**: `400 Bad Request` on unverified email or invalid token; `401 Unauthorized` on signature failure.
+- **Source**: `backend/app/api/v1/auth.py`
+- **Test Status**: `VERIFIED` (`tests/test_auth.py`).
+
 ---
 
 ## 2. Business Management (`/api/v1/businesses`)

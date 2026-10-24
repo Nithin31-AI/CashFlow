@@ -66,3 +66,20 @@
 - All credentials, secrets, and connection strings are managed strictly through environment variables (`.env`).
 - Safe templates (`.env.example` in root and `backend/.env.example`) are committed to version control with placeholder values.
 - Real production secrets, private keys, database passwords, or customer documents must never be committed to the repository or stored in project-memory files.
+
+---
+
+## 6. Google OAuth Server-Side Security
+- **Token Verification**: ID tokens from Google Identity Services are verified strictly server-side (`backend/app/services/google_auth.py`) using `google.oauth2.id_token.verify_oauth2_token`.
+- **Audience & Issuer Enforcement**: The token's `aud` claim must match `GOOGLE_CLIENT_ID` and the `iss` claim must be `accounts.google.com` or `https://accounts.google.com`.
+- **Mandatory Email Verification**: The `email_verified` claim must be explicitly `true`. Unverified emails are rejected immediately.
+- **Safe Account Linking**: Accounts are linked to existing records only when the verified email address matches an existing active user. Accounts are never linked on unverified email claims.
+- **Zero Trust for Client Claims**: The server extracts email and user identity solely from the cryptographically verified Google JWT payload, ignoring any client-supplied user profiles.
+
+---
+
+## 7. Container & Dockerization Security
+- **Unprivileged Execution**: Both backend and frontend containers run as non-root users (`appuser` with UID 1000 in Python, `nextjs` with UID 1001 in Node.js).
+- **Network Isolation**: PostgreSQL 16 database port 5432 is not exposed publicly on host network interfaces. It is exposed solely within the private Docker bridge network (`cashflow_network`).
+- **Secret Layer Prevention**: `.dockerignore` files in frontend and backend ensure `.env`, `.env.*`, `.git`, `.db`, and upload files are excluded from image builds.
+- **Health Checks**: Containers implement automated health checks (`/api/v1/health` and Next.js HTTP probe) to verify operational readiness before dependent services connect.

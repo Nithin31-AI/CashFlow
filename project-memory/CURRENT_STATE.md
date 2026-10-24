@@ -2,17 +2,18 @@
 
 ## 1. Executive Summary
 
-- **Current Stage**: **Stage 3 of 4 (COMPLETED & VERIFIED)**
-- **Active Workspace**: Full-stack Next.js 15 (frontend) + FastAPI (backend) + SQLAlchemy 2.0 / Alembic (database).
+- **Current Stage**: **Stage 4: Production Readiness, Authentication Enhancements, Dockerization, Security Validation, and Product Cleanup (COMPLETED & VERIFIED)**
+- **Active Workspace**: Full-stack Next.js 15 (frontend) + FastAPI (backend) + PostgreSQL 16 / SQLite (database) + Docker / Docker Compose.
 - **Verification Summary**:
-  - Automated Tests: **26 passed out of 26 executed tests** (`pytest` in 18.33s).
+  - Automated Tests: **30 passed out of 30 executed tests** (`pytest` in 20.32s).
   - Type Checking: `npx tsc --noEmit` exited with **code 0 (zero errors)** across all Next.js routes.
   - Production Build: `npm run build` completed with **code 0 (zero errors)** for all 23 static and dynamic routes.
-  - Runtime Verification: Interactive browser subagent verified user authentication, official CF monogram favicon, single canonical sage green (`#8A9A78`) across dark and light modes, Monte Carlo Simulation (`/simulation`), Financial Decisions & Scenarios (`/decisions`), Grounded Conversational AI Assistant (`/assistant`), and Automated Sentinel Alerts (`/alerts`).
+  - Runtime Verification: Interactive browser subagent verified user authentication, official product tagline, "Continue with Google" button, independent show/hide password visibility toggles, removal of internal stage text from UI, and complete session flow.
   - Recordings: 
     - Stage 2: `file:///C:/Users/NITHIN/.gemini/antigravity-ide/brain/d9ee50a5-292f-48d7-9534-337975d82d38/stage2_verification_1792861824162.webp`
     - Stage 3: `file:///C:/Users/NITHIN/.gemini/antigravity-ide/brain/d9ee50a5-292f-48d7-9534-337975d82d38/stage3_verification_1792867272444.webp`
     - Alerts Resilience Verification: `file:///C:/Users/NITHIN/.gemini/antigravity-ide/brain/4242ded8-98d1-4d42-8a52-b2ecaba680ea/alerts_page_verification_1792873341339.webp`
+    - Stage 4 Auth & UI Verification: `file:///C:/Users/NITHIN/.gemini/antigravity-ide/brain/4242ded8-98d1-4d42-8a52-b2ecaba680ea/stage4_auth_and_ui_verification_1792878142330.webp`
 
 ---
 
@@ -32,6 +33,11 @@
 
 | Feature Name | Category | Status | Implementation Files | Tests Executed | Test Result | Verification Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Google Authentication** | Auth | `VERIFIED` | `backend/app/api/v1/auth.py`<br>`backend/app/services/google_auth.py`<br>`frontend/src/components/GoogleSignInButton.tsx` | `tests/test_auth.py::test_google_config_endpoint`<br>`test_google_auth_new_user_and_auto_workspace`<br>`test_google_auth_existing_user_linking`<br>`test_google_auth_empty_token_fails` | PASSED | Server-side token verification, email_verified assertion, automatic workspace setup for new users, safe account linking for existing users, graceful fallback when credentials not set. |
+| **Password Visibility Toggle** | Auth / UI | `VERIFIED` | `frontend/src/app/(auth)/login/page.tsx`<br>`frontend/src/app/(auth)/register/page.tsx` | Browser subagent | VERIFIED | Eye/EyeOff toggle buttons inside password and confirm password inputs; keyboard navigable, screen reader accessible (`aria-label`), independent state, type="password" to type="text". |
+| **Official Product Tagline** | Branding | `VERIFIED` | `frontend/src/app/(auth)/login/page.tsx`<br>`frontend/src/app/(auth)/register/page.tsx`<br>`.env.example` | Browser subagent | VERIFIED | Official tagline: *"Turn financial data into confident business decisions."* displayed clearly on authentication pages in both light and dark themes. |
+| **Customer-Facing Stage Text Removal** | UI / UX | `VERIFIED` | `frontend/src/app/page.tsx`<br>`frontend/src/app/(dashboard)/dashboard/page.tsx`<br>`frontend/src/app/(dashboard)/decisions/page.tsx` | Browser subagent | VERIFIED | All customer-facing references to "Stage 1", "Stage 2", "Stage 3", "Stage 4" replaced with product terms ("Financial Intelligence Platform", "FINANCIAL INTELLIGENCE ENGINE", "Autonomous Solver"). |
+| **Production Dockerization** | DevOps | `VERIFIED` | `backend/Dockerfile`<br>`frontend/Dockerfile`<br>`docker-compose.yml`<br>`backend/.dockerignore`<br>`frontend/.dockerignore` | Config & build checks | VERIFIED | Multi-stage Docker builds, unprivileged non-root users (`appuser` / `nextjs`), PostgreSQL 16 service, private db network, persistent volumes, container healthchecks. |
 | **Canonical Sage Green (`#8A9A78`)** | Branding | `VERIFIED` | `frontend/src/app/globals.css`<br>`frontend/tailwind.config.ts` | Browser subagent | VERIFIED | Single unified sage green token (`#8A9A78`) across both dark and light modes; zero conflicting green variations. |
 | **Official CF Monogram Favicon** | Branding | `VERIFIED` | `frontend/public/favicon.ico`<br>`frontend/src/app/layout.tsx` | Browser subagent | VERIFIED | High-resolution CF monogram mark extracted with transparent background, properly configured in HTML `<head>`. |
 | **Monte Carlo Simulation Engine** | AI / Sim | `VERIFIED` | `backend/app/services/simulation_service.py`<br>`frontend/src/app/(dashboard)/simulation/page.tsx` | `tests/test_simulations.py::test_monte_carlo_simulation_reproducibility_and_percentiles`<br>`test_monte_carlo_with_payment_delay_and_invoices` | PASSED | 1000 stochastic paths, P10/P50/P90 percentile envelopes, reserve breach probability, expected shortfall, seed reproducibility. |
@@ -48,11 +54,11 @@
 | **Business Workspace Creation** | Multi-Tenancy | `VERIFIED` | `backend/app/api/v1/businesses.py`<br>`frontend/src/app/(dashboard)/onboarding/page.tsx` | `tests/test_tenancy.py`<br>`tests/test_rbac.py` | PASSED | Owner assignment, default bank account created. |
 | **Strict Tenant Isolation** | Multi-Tenancy | `VERIFIED` | `backend/app/api/deps.py`<br>`backend/app/api/v1/` | `tests/test_tenancy.py::test_strict_tenant_isolation` | PASSED | Proves tenant isolation on all queries; returns 403 Forbidden. |
 | **Role-Based Access Control (RBAC)** | Security | `VERIFIED` | `backend/app/api/deps.py`<br>`backend/app/models/membership.py` | `tests/test_rbac.py::test_rbac_permissions` | PASSED | OWNER, FINANCE_MANAGER, ACCOUNTANT, VIEWER hierarchy verified. |
-| **Database Schema & Migrations** | Database | `VERIFIED` | `backend/app/models/`<br>`backend/alembic/versions/` | `tests/conftest.py`<br>`alembic upgrade head` | PASSED | Applied migrations `9c2481321bb2` (Stage 1), `a1b2c3d4e5f6` (Stage 2), and `b2c3d4e5f6a7` (Stage 3) cleanly to SQLite (`cashflow.db`). |
+| **Database Schema & Migrations** | Database | `VERIFIED` | `backend/app/models/`<br>`backend/alembic/versions/` | `tests/conftest.py`<br>`alembic upgrade head` | PASSED | Applied migrations `9c2481321bb2` (Stage 1), `a1b2c3d4e5f6` (Stage 2), and `b2c3d4e5f6a7` (Stage 3) cleanly to SQLite (`cashflow.db`) and compatible with PostgreSQL 16. |
 | **Secure File Upload & Storage** | Ingestion | `VERIFIED` | `backend/app/core/storage.py`<br>`backend/app/api/v1/uploads.py` | `tests/test_uploads.py::test_file_type_and_extension_validation` | PASSED | Magic number checks, 15 MB size limit, non-public storage. |
 | **Duplicate Upload Detection** | Ingestion | `VERIFIED` | `backend/app/api/v1/uploads.py`<br>`backend/app/models/file.py` | `tests/test_uploads.py::test_duplicate_upload_detection` | PASSED | SHA-256 hash checks with HTTP 409 Conflict rejection. |
 | **Multi-File Batch Upload Queue** | Ingestion | `VERIFIED` | `backend/app/api/v1/uploads.py`<br>`frontend/src/app/(dashboard)/imports/new/page.tsx` | `tests/test_batch_uploads.py::test_batch_upload_workflow` | PASSED | Concurrent multi-file upload queue with drag-and-drop, individual file progress badges, and retry mechanism. |
-| **CSV & Excel Parsing & Validation** | Ingestion | `VERIFIED` | `backend/app/services/csv_parser.py`<br>`backend/app/services/excel_parser.py` | `tests/test_csv_import.py`<br>`tests/test_excel_import.py` | PASSED | Delimiter detection, encoding support, row-level validation engine with negative parentheses handling. |
+| **CSV & Excel Parsing & Validation** | Ingestion | `backend/app/services/csv_parser.py`<br>`backend/app/services/excel_parser.py` | `tests/test_csv_import.py`<br>`tests/test_excel_import.py` | PASSED | Delimiter detection, encoding support, row-level validation engine with negative parentheses handling. |
 | **Financial Engine & Accurate Math** | Finance | `VERIFIED` | `backend/app/services/financial_service.py`<br>`backend/app/api/v1/financial.py` | `tests/test_financial_engine.py::test_authoritative_balance_calculation` | PASSED | Exact `Decimal` arithmetic. Formula: `Ending = Opening + Inflows - Outflows`. Unpaid invoices strictly separated from cash. |
 | **Internal Transfer Isolation** | Finance | `VERIFIED` | `backend/app/services/financial_service.py`<br>`backend/app/api/v1/transactions.py` | `tests/test_financial_engine.py::test_internal_transfer_exclusion` | PASSED | Pairs linked transfers between accounts; nets out to 0; omitted from revenue and expense totals. |
 | **Multi-Currency & Provenance Engine** | Finance | `VERIFIED` | `backend/app/services/currency_service.py`<br>`backend/app/api/v1/currencies.py` | `tests/test_financial_engine.py::test_multi_currency_processing` | PASSED | Default reporting INR (`₹`), rate provenance recorded, fallback RBI benchmark conversions. |
@@ -67,20 +73,19 @@
 
 ## 4. Unimplemented Features (Planned for Later Stages)
 
-- **Stage 4**:
-  - Open Banking feed aggregators (Plaid/Yodlee/Setu connectors).
-  - Production cloud deployment and automated CI/CD pipelines.
-  - Multi-region failover and production telemetry.
+- **Post-Stage 4 Enhancements**:
+  - Live Open Banking direct webhooks (e.g. Setu AA / Plaid live sync).
+  - Multi-region Kubernetes deployment helm charts.
 
 ---
 
 ## 5. Known Bugs & Current Blockers
 
-- **Known Bugs**: None active. The runtime error in `src/app/(dashboard)/alerts/page.tsx` (`TypeError: Cannot read properties of undefined (reading 'replace')`) has been completely diagnosed, defensively resolved, and empirically verified.
-- **Current Blockers**: None. Full stack verified, 26/26 pytest tests pass, TypeScript compilation passes with zero errors, Next.js production build passes with zero errors, and browser runtime execution confirmed.
+- **Known Bugs**: None.
+- **Current Blockers**: None. Full stack verified, 30/30 pytest tests pass, TypeScript compilation passes with zero errors, Next.js production build passes with zero errors, and browser runtime execution confirmed.
 
 ---
 
 ## 6. Current Next Action
 
-Proceed to **Stage 4: Bank Integrations, Cloud Deployment, and Enterprise Production Readiness**.
+Proceed to publishing Docker images to container registry and user cloud deployment.

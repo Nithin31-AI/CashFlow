@@ -1,3 +1,6 @@
+import re
+import uuid
+import secrets
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
@@ -13,6 +16,10 @@ from app.core.security import (
 from app.core.audit import record_audit_log
 from app.models.user import User
 from app.models.password_reset import PasswordResetToken
+from app.models.business import Business
+from app.models.membership import BusinessMembership, MembershipRole
+from app.models.account import FinancialAccount, AccountType
+from app.services.google_auth import verify_google_id_token
 from app.schemas.auth import (
     UserRegister,
     UserLogin,
@@ -22,6 +29,8 @@ from app.schemas.auth import (
     ForgotPasswordResponse,
     ResetPasswordRequest,
     ResetPasswordResponse,
+    GoogleAuthRequest,
+    GoogleConfigResponse,
 )
 
 router = APIRouter()
@@ -173,3 +182,100 @@ def reset_password(req: ResetPasswordRequest, request: Request, db: Session = De
     )
 
     return ResetPasswordResponse(message="Your password has been successfully reset. You can now log in.")
+
+def _generate_slug(name: str) -> str:
+    base = re.sub(r"[^a-zA-Z0-9]+", "-", name.strip().lower()).strip("-")
+    if not base:
+        base = "business"
+    return f"{base}-{uuid.uuid4().hex[:6]}"
+
+@router.get("/google/config", response_model=GoogleConfigResponse)
+def get_google_config():
+    """
+    Returns public Google OAuth configuration for the frontend client.
+    """
+    return GoogleConfigResponse(
+        client_id=settings.GOOGLE_CLIENT_ID,
+        enabled=bool(settings.GOOGLE_CLIENT_ID),
+    )
+
+@router.post("/google", response_model=Token)
+def google_auth(req: GoogleAuthRequest, request: Request, db: Session = Depends(get_db)):
+    """
+    Authenticates a user via verified Google ID Token.
+    - If user exists: validates status and signs user in.
+    - If new user: registers user and automatically creates a default business workspace.
+    """
+    claims = verify_google_id_token(req.credential)
+    email = claims["email"]
+    name = claims["name"]
+
+    user = db.query(User).filter(User.email == email).first()
+
+    if user:
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User account is deactivated."
+            )
+        action_name = "AUTH_GOOGLE_LOGIN"
+    else:
+        # Create new user with verified Google email and secure generated password hash
+        user = User(
+            email=email,
+            hashed_password=get_password_hash(secrets.token_urlsafe(32)),
+            full_name=name,
+            is_active=True,
+        )
+        db.add(user)
+        db.flush()
+
+        # Create default business workspace for seamless onboarding
+        business_name = f"{name}'s Workspace"
+        business = Business(
+            name=business_name,
+            slug=_generate_slug(business_name),
+            currency="USD",
+            country="US",
+            timezone="UTC",
+        )
+        db.add(business)
+        db.flush()
+
+        membership = BusinessMembership(
+            business_id=business.id,
+            user_id=user.id,
+            role=MembershipRole.OWNER,
+        )
+        db.add(membership)
+
+        default_account = FinancialAccount(
+            business_id=business.id,
+            name="Primary Operating Account",
+            account_type=AccountType.BANK,
+            currency="USD",
+            institution_name="Primary Bank",
+            is_active=True,
+        )
+        db.add(default_account)
+        db.commit()
+        db.refresh(user)
+        action_name = "AUTH_GOOGLE_REGISTER"
+
+    access_token = create_access_token(subject=user.id)
+
+    record_audit_log(
+        db=db,
+        action=action_name,
+        user_id=user.id,
+        resource_type="User",
+        resource_id=user.id,
+        details={"email": user.email, "provider": "google"},
+        ip_address=request.client.host if request.client else None,
+    )
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserOut.model_validate(user),
+    )

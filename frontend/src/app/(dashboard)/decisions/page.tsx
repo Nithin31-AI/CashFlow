@@ -185,7 +185,7 @@ export default function DecisionsPage() {
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--color-sage)]/10 text-[var(--color-sage)] border border-[var(--color-sage)]/20">
               AI Decision Intelligence
             </span>
-            <span className="text-xs text-[var(--foreground)]/50">Stage 3 Production</span>
+            <span className="text-xs text-[var(--foreground)]/50">Autonomous Solver</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             Financial Decisions & Scenarios

@@ -390,6 +390,17 @@ class ApiClient {
     });
   }
 
+  async googleAuth(credential: string): Promise<{ access_token: string; token_type: string; user: User }> {
+    return this.request<{ access_token: string; token_type: string; user: User }>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential }),
+    });
+  }
+
+  async getGoogleConfig(): Promise<{ client_id: string | null; enabled: boolean }> {
+    return this.request<{ client_id: string | null; enabled: boolean }>("/auth/google/config");
+  }
+
   // Businesses
   async listBusinesses(): Promise<Business[]> {
     return this.request<Business[]>("/businesses/");
@@ -469,7 +480,7 @@ class ApiClient {
     });
   }
 
-  // Stage 2: Financial Engine
+  // Financial Engine
   async getFinancialOverview(businessId: string): Promise<FinancialOverview> {
     return this.request<FinancialOverview>(`/businesses/${businessId}/financial/overview`);
   }
@@ -481,7 +492,7 @@ class ApiClient {
     });
   }
 
-  // Stage 2: Transactions
+  // Transactions
   async listTransactions(
     businessId: string,
     params?: { category?: string; status?: string; is_internal_transfer?: boolean; search?: string }
@@ -509,7 +520,7 @@ class ApiClient {
     });
   }
 
-  // Stage 2: Invoices & Payments
+  // Invoices & Payments
   async listInvoices(businessId: string, status?: string): Promise<InvoiceRecord[]> {
     const qs = status ? `?status=${status}` : "";
     return this.request<InvoiceRecord[]>(`/businesses/${businessId}/invoices${qs}`);
@@ -533,7 +544,7 @@ class ApiClient {
     });
   }
 
-  // Stage 2: Reconciliation
+  // Reconciliation
   async listReconciliationCandidates(businessId: string): Promise<ReconciliationCandidate[]> {
     return this.request<ReconciliationCandidate[]>(`/businesses/${businessId}/reconciliations/candidates`);
   }
@@ -550,7 +561,7 @@ class ApiClient {
     });
   }
 
-  // Stage 2: Forecasting & Risks
+  // Forecasting & Risks
   async getForecast(businessId: string, horizonDays: number = 30): Promise<ForecastResponse> {
     return this.request<ForecastResponse>(`/businesses/${businessId}/forecasts?horizon_days=${horizonDays}`);
   }
@@ -634,7 +645,7 @@ class ApiClient {
     return this.request<ImportedRecord[]>(`/businesses/${businessId}/records`);
   }
 
-  // Stage 3: Monte Carlo Simulations
+  // Monte Carlo Simulations
   async runSimulation(
     businessId: string,
     params?: {
@@ -656,7 +667,7 @@ class ApiClient {
     return this.request<SimulationRun>(`/businesses/${businessId}/simulations/latest`);
   }
 
-  // Stage 3: Goals, Scenarios & Decision Optimization
+  // Goals, Scenarios & Decision Optimization
   async listGoals(businessId: string): Promise<FinancialGoal[]> {
     return this.request<FinancialGoal[]>(`/businesses/${businessId}/goals`);
   }
@@ -722,7 +733,7 @@ class ApiClient {
     );
   }
 
-  // Stage 3: Alerts
+  // Alerts
   async listAlertRules(businessId: string): Promise<AlertRule[]> {
     return this.request<AlertRule[]>(`/businesses/${businessId}/alerts/rules`);
   }
@@ -760,7 +771,7 @@ class ApiClient {
     return this.request<AlertEvent>(`/businesses/${businessId}/alerts/events/${eventId}/resolve`, { method: "POST" });
   }
 
-  // Stage 3: Conversational AI Assistant
+  // Conversational AI Assistant
   async askAssistant(businessId: string, query: string): Promise<AssistantResponse> {
     return this.request<AssistantResponse>(`/businesses/${businessId}/assistant/query`, {
       method: "POST",

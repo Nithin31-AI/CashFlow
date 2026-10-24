@@ -2,15 +2,17 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Lock, Mail, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowRight, Lock, Mail, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -38,9 +40,12 @@ export default function LoginPage() {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-block mb-6">
+        <div className="inline-block mb-4">
           <Logo size="lg" showTagline={true} href="/" />
         </div>
+        <p className="text-xs sm:text-sm text-theme-textMuted font-medium mb-4">
+          Turn financial data into confident business decisions.
+        </p>
         <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-theme-text">
           Sign in to your account
         </h2>
@@ -63,6 +68,26 @@ export default function LoginPage() {
               <span>{error}</span>
             </div>
           )}
+
+          {/* Google Sign In */}
+          <div className="mb-6">
+            <GoogleSignInButton
+              buttonText="Continue with Google"
+              onError={(err) => setError(err)}
+              disabled={isLoading}
+            />
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-theme-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-theme-surface px-3 text-theme-textMuted font-semibold tracking-wider text-[11px]">
+                  Or continue with email
+                </span>
+              </div>
+            </div>
+          </div>
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
@@ -114,14 +139,27 @@ export default function LoginPage() {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-theme-surface border border-theme-border text-theme-text placeholder-theme-textMuted/60 text-xs focus:outline-none focus:border-theme-sage transition-all"
+                  className="block w-full pl-10 pr-10 py-2.5 rounded-xl bg-theme-surface border border-theme-border text-theme-text placeholder-theme-textMuted/60 text-xs focus:outline-none focus:border-theme-sage transition-all"
                   placeholder="••••••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-theme-textMuted hover:text-theme-text focus:outline-none transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={0}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
 

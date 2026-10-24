@@ -99,7 +99,7 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-theme-sage/20 text-theme-sage border border-theme-sage/30">
-              STAGE 2 FINANCIAL INTELLIGENCE
+              FINANCIAL INTELLIGENCE ENGINE
             </span>
             <span className="text-xs text-theme-textMuted font-medium">
               Currency: <strong className="text-theme-text">{currency} (₹)</strong>

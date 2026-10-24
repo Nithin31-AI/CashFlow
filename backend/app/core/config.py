@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 60  # 1 hour
     
+    # Google OAuth
+    GOOGLE_CLIENT_ID: Union[str, None] = None
+    GOOGLE_CLIENT_SECRET: Union[str, None] = None
+    
     # Upload storage
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_SIZE_MB: int = 15

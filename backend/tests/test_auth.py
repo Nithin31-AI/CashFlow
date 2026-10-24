@@ -81,3 +81,59 @@ def test_password_recovery_workflow(client):
     # New password succeeds
     r_new = client.post("/api/v1/auth/login", json={"email": "recovery_user@example.com", "password": "NewSecretPassword456!"})
     assert r_new.status_code == 200
+
+def test_google_config_endpoint(client):
+    r = client.get("/api/v1/auth/google/config")
+    assert r.status_code == 200
+    data = r.json()
+    assert "enabled" in data
+    assert "client_id" in data
+
+def test_google_auth_new_user_and_auto_workspace(client):
+    # Simulated Google authentication for new user
+    token_str = "mock_google_token_new_googlenew@enterprise.com"
+    r = client.post("/api/v1/auth/google", json={"credential": token_str})
+    assert r.status_code == 200
+    data = r.json()
+    assert "access_token" in data
+    assert data["user"]["email"] == "googlenew@enterprise.com"
+
+    # Verify user can access protected endpoint with returned token
+    token = data["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    r_me = client.get("/api/v1/auth/me", headers=headers)
+    assert r_me.status_code == 200
+    assert r_me.json()["email"] == "googlenew@enterprise.com"
+
+    # Verify auto-created business workspace exists
+    r_biz = client.get("/api/v1/businesses/", headers=headers)
+    assert r_biz.status_code == 200
+    biz_list = r_biz.json()
+    assert len(biz_list) >= 1
+    assert "Workspace" in biz_list[0]["name"]
+
+def test_google_auth_existing_user_linking(client):
+    # Register user with password first
+    email = "googlelink@company.com"
+    client.post("/api/v1/auth/register", json={
+        "email": email,
+        "password": "SecurePassword123!",
+        "full_name": "Link User"
+    })
+
+    # Sign in using Google with identical verified email
+    token_str = f"mock_google_token_existing_{email}"
+    r = client.post("/api/v1/auth/google", json={"credential": token_str})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["user"]["email"] == email
+
+    # Verify token works
+    headers = {"Authorization": f"Bearer {data['access_token']}"}
+    r_me = client.get("/api/v1/auth/me", headers=headers)
+    assert r_me.status_code == 200
+    assert r_me.json()["email"] == email
+
+def test_google_auth_empty_token_fails(client):
+    r = client.post("/api/v1/auth/google", json={"credential": ""})
+    assert r.status_code in [400, 422]

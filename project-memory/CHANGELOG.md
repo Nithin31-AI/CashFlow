@@ -196,3 +196,47 @@ Implement Stage 3 advanced financial intelligence: Monte Carlo stochastic cash-f
 - **Automated Tests**: **25 passed out of 25 tests** (`python -m pytest tests -v` in 14.24s).
 - **TypeScript Type Validation**: **`npx tsc --noEmit` exited with code 0 (zero errors)** across all Next.js routes.
 - **Runtime Verification**: Interactive browser subagent recorded session (`stage3_verification_1792867272444.webp`) verifying full user flows across all 4 new views, favicon rendering, and canonical sage-green `#8A9A78` styling.
+
+---
+
+## [2026-10-25] — Stage 4: Production Readiness, Authentication Enhancements, Dockerization, Security Validation & Product Cleanup
+
+### Objective
+Implement Stage 4: Google authentication with server-side ID token validation and safe account linking, show/hide password visibility toggle across authentication forms, updated official product tagline ("Turn financial data into confident business decisions."), removal of internal stage references from customer-facing UI, production-grade multi-stage Docker containerization with non-root security, Docker Compose with PostgreSQL 16 Alpine and named volumes, production security validation, and complete test verification.
+
+### Development Stage
+**Stage 4 of 4** (Completed & Verified)
+
+### Files Created / Modified
+- **Authentication & Backend Security**:
+  - `backend/app/core/config.py`: Added `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` settings.
+  - `backend/app/schemas/auth.py`: Added `GoogleAuthRequest` and `GoogleConfigResponse` models.
+  - `backend/app/services/google_auth.py`: Created Google OAuth service with server-side ID token verification via `google.oauth2.id_token`, audience checks, issuer validation, and email verification assertion.
+  - `backend/app/api/v1/auth.py`: Implemented `GET /api/v1/auth/google/config` and `POST /api/v1/auth/google` with automatic workspace creation for new users and safe account linking for existing users.
+  - `backend/app/main.py`: Added `/api/v1/health` route alias alongside `/health`.
+  - `backend/requirements.txt`: Added `google-auth>=2.28.0` and `psycopg2-binary>=2.9.9`.
+- **Frontend Authentication & UI**:
+  - `frontend/src/components/GoogleSignInButton.tsx`: Created reusable Google sign-in button using official Google Identity Services (GIS), multi-color Google SVG icon, loading states, and configuration error handling.
+  - `frontend/src/app/(auth)/login/page.tsx`: Added Google Sign-In button, show/hide password visibility toggle (Eye/EyeOff, accessible `aria-label`, `type="button"`), updated official product tagline.
+  - `frontend/src/app/(auth)/register/page.tsx`: Added Google Sign-In button, independent show/hide toggles for both Password and Confirm Password fields, password match validation, updated official product tagline.
+  - `frontend/src/lib/api.ts`: Added `googleAuth` and `getGoogleConfig` methods; cleaned internal stage comments.
+- **Customer UI Cleanup (Stage Text Removal)**:
+  - `frontend/src/app/page.tsx`: Replaced "Stage 2: Financial Engine..." badge with "Financial Intelligence Platform".
+  - `frontend/src/app/(dashboard)/dashboard/page.tsx`: Replaced "STAGE 2 FINANCIAL INTELLIGENCE" badge with "FINANCIAL INTELLIGENCE ENGINE".
+  - `frontend/src/app/(dashboard)/decisions/page.tsx`: Replaced "Stage 3 Production" badge with "Autonomous Solver".
+- **Dockerization & Deployment Preparation**:
+  - `backend/Dockerfile`: Multi-stage build with unprivileged non-root user `appuser` (UID 1000), `libpq-dev`, `curl` healthcheck, and optimized dependencies.
+  - `frontend/Dockerfile`: Multi-stage build with unprivileged non-root user `nextjs` (UID 1001), Next.js production bundle, and `wget` healthcheck.
+  - `docker-compose.yml`: Configured PostgreSQL 16 Alpine, unexposed db port to host, service dependencies with healthchecks, persistent volumes `postgres_data` and `backend_uploads`, and custom bridge network `cashflow_network`.
+  - `backend/.dockerignore` & `frontend/.dockerignore`: Excluded `.env`, `.git`, local databases, caches, and test artifacts.
+  - `.gitignore`: Created comprehensive root `.gitignore` and untracked previously committed compiled `.pyc` and `.db` files from the repository index.
+  - `.env.example`: Updated with Google OAuth configuration, PostgreSQL variables, and instructions.
+- **Automated Tests**:
+  - `backend/tests/test_auth.py`: Added 4 new tests (`test_google_config_endpoint`, `test_google_auth_new_user_and_auto_workspace`, `test_google_auth_existing_user_linking`, `test_google_auth_empty_token_fails`).
+  - `backend/tests/test_alerts_and_assistant.py`: Added resilience test for null/undefined alert categories.
+
+### Test Results
+- **Automated Tests**: **30 passed out of 30 tests** (`python -m pytest tests -v` in 20.32s).
+- **TypeScript Type Validation**: **`npx tsc --noEmit` exited with code 0 (zero errors)** across all Next.js routes.
+- **Frontend Production Build**: **`npm run build` compiled all 23 static and dynamic routes with code 0**.
+- **Runtime Verification**: Interactive browser subagent recorded session (`stage4_auth_and_ui_verification_1792878142330.webp`) verifying login page, register page, password visibility toggles, Google button, and stage text removal across dashboard and decisions pages.

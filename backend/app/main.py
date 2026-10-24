@@ -52,6 +52,7 @@ async def security_headers_middleware(request: Request, call_next):
     return response
 
 @app.get("/health", tags=["Health"])
+@app.get("/api/v1/health", tags=["Health"])
 def health_check():
     return {
         "status": "healthy",

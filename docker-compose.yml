@@ -1,35 +1,52 @@
 version: '3.8'
 
 services:
+  # ==========================================
+  # PostgreSQL Database Service
+  # ==========================================
   db:
     image: postgres:16-alpine
     container_name: cashflow_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: cashflow_db
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      POSTGRES_DB: ${POSTGRES_DB:-cashflow_db}
+    # Security: Database port is accessible only within the internal Docker network.
+    # To expose on host for local debugging, uncomment the ports section below:
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cashflow_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    networks:
+      - cashflow_network
 
+  # ==========================================
+  # FastAPI Financial Intelligence Backend
+  # ==========================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: cashflow-backend:latest
     container_name: cashflow_backend
     restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql+psycopg2://postgres:postgrespassword@db:5432/cashflow_db
-      - SECRET_KEY=cashflow-production-grade-jwt-secret-key-min-32-chars
-      - CORS_ORIGINS=["http://localhost:3000"]
-      - DEV_MODE=false
+      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgrespassword}@db:5432/${POSTGRES_DB:-cashflow_db}
+      - SECRET_KEY=${SECRET_KEY:-cashflow-production-grade-jwt-secret-key-min-32-chars}
+      - CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
+      - DEV_MODE=${DEV_MODE:-false}
+      - ENVIRONMENT=production
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - UPLOAD_DIR=/app/uploads
     ports:
       - "8000:8000"
@@ -38,20 +55,43 @@ services:
         condition: service_healthy
     volumes:
       - backend_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - cashflow_network
 
+  # ==========================================
+  # Next.js 15 Frontend Application
+  # ==========================================
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: cashflow-frontend:latest
     container_name: cashflow_frontend
     restart: unless-stopped
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+      - NODE_ENV=production
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    networks:
+      - cashflow_network
+
+networks:
+  cashflow_network:
+    driver: bridge
 
 volumes:
   postgres_data:
+    name: cashflow_postgres_data
   backend_uploads:
+    name: cashflow_backend_uploads

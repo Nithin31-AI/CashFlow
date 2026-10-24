@@ -44,7 +44,7 @@ export default function HomePage() {
       <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-16 max-w-5xl mx-auto">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-theme-sage/15 border border-theme-sage/30 text-theme-sage text-xs font-bold mb-8">
           <ShieldCheck className="w-4 h-4" />
-          <span>Stage 2: Financial Engine, Reconciliation & Forecasting</span>
+          <span>Financial Intelligence Platform</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-theme-text mb-6 leading-tight max-w-4xl">

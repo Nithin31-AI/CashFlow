@@ -104,3 +104,56 @@ cashFlow is structured as a decoupled full-stack SaaS application with a Next.js
 4. **Explainable AI Matching**: Automated reconciliation candidate scoring with human review gates.
 5. **Private File Storage & Magic Bytes**: Non-public storage with UUID names and MIME inspection.
 6. **Zero FOUC Spatial Theme Engine**: CSS custom properties with SSR mounted guard.
+7. **Server-Side Identity Validation**: Client identity or verification claims are never trusted; Google OAuth tokens are verified server-side via Google's public certs.
+
+---
+
+## 5. Google OAuth Authentication Flow
+
+```
++----------+             +--------------------------+             +-------------------------+
+|  Client  |             | Google Identity Services |             | cashFlow Backend API    |
++----+-----+             +------------+-------------+             +------------+------------+
+     |                                |                                        |
+     | 1. Click "Continue with Google"|                                        |
+     |------------------------------->|                                        |
+     | 2. User selects account        |                                        |
+     |<-------------------------------|                                        |
+     | 3. Returns signed ID Token     |                                        |
+     |--------------------------------+                                        |
+     |                                                                         |
+     | 4. POST /api/v1/auth/google {"credential": "<id_token>"}                |
+     |------------------------------------------------------------------------>|
+     |                                                 5. verify_oauth2_token()|
+     |                                                    - audience check     |
+     |                                                    - issuer check       |
+     |                                                    - email_verified check
+     |                                                 6. Lookup / Create User |
+     |                                                    & default workspace  |
+     |                                                 7. Issue JWT token      |
+     | 8. 200 OK {"access_token": "...", "user": {...}}                        |
+     |<------------------------------------------------------------------------|
+     | 9. Save session & redirect to /dashboard                                |
+```
+
+---
+
+## 6. Docker & Containerization Topology
+
+```
++-------------------------------------------------------------------------------+
+|                       Docker Network: cashflow_network                        |
+|                                                                               |
+|  +--------------------+    +--------------------+    +---------------------+  |
+|  |     frontend       |    |      backend       |    |         db          |  |
+|  |  (Next.js 15)      |    |    (FastAPI)       |    |   (PostgreSQL 16)   |  |
+|  |  Port: 3000        |    |  Port: 8000        |    |   Internal: 5432    |  |
+|  |  User: nextjs:1001 |    |  User: appuser:1000|    |   (Not host bound)  |  |
+|  |  Multi-stage build |    |  Multi-stage build |    |   postgres:16-alpine|  |
+|  +---------+----------+    +---------+----------+    +----------+----------+  |
+|            │                         │                          │             |
++------------│─────────────────────────│──────────────────────────│-------------+
+             │                         │                          │
+       Host Port 3000            Host Port 8000              Named Volume:
+                                                        cashflow_postgres_data
+```

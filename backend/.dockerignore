@@ -1,0 +1,17 @@
+.env
+.env.*
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov/
+*.db
+cashflow.db
+uploads/*
+!uploads/.gitkeep
+.git
+.gitignore
+.vscode
+.idea

@@ -2,9 +2,10 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Lock, Mail, User, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Lock, Mail, User, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -12,6 +13,9 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -22,6 +26,11 @@ export default function RegisterPage() {
 
     if (password.length < 8) {
       setError("Password must be at least 8 characters long.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please re-enter your password.");
       return;
     }
 
@@ -51,11 +60,14 @@ export default function RegisterPage() {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-block mb-6">
+        <div className="inline-block mb-4">
           <Logo size="lg" showTagline={true} href="/" />
         </div>
+        <p className="text-xs sm:text-sm text-theme-textMuted font-medium mb-4">
+          Turn financial data into confident business decisions.
+        </p>
         <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-theme-text">
-          Create your account
+          Create your business account
         </h2>
         <p className="mt-2 text-xs sm:text-sm text-theme-textMuted">
           Already registered?{" "}
@@ -76,6 +88,26 @@ export default function RegisterPage() {
               <span>{error}</span>
             </div>
           )}
+
+          {/* Google Sign In */}
+          <div className="mb-6">
+            <GoogleSignInButton
+              buttonText="Continue with Google"
+              onError={(err) => setError(err)}
+              disabled={isLoading}
+            />
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-theme-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-theme-surface px-3 text-theme-textMuted font-semibold tracking-wider text-[11px]">
+                  Or register with email
+                </span>
+              </div>
+            </div>
+          </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
@@ -138,14 +170,64 @@ export default function RegisterPage() {
                 </div>
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-theme-surface border border-theme-border text-theme-text placeholder-theme-textMuted/60 text-xs focus:outline-none focus:border-theme-sage transition-all"
+                  className="block w-full pl-10 pr-10 py-2.5 rounded-xl bg-theme-surface border border-theme-border text-theme-text placeholder-theme-textMuted/60 text-xs focus:outline-none focus:border-theme-sage transition-all"
                   placeholder="••••••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-theme-textMuted hover:text-theme-text focus:outline-none transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={0}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="block text-xs font-bold text-theme-text uppercase tracking-wider mb-1.5"
+              >
+                Confirm Password
+              </label>
+              <div className="relative rounded-xl shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-theme-textMuted">
+                  <Lock className="h-4 w-4" />
+                </div>
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="block w-full pl-10 pr-10 py-2.5 rounded-xl bg-theme-surface border border-theme-border text-theme-text placeholder-theme-textMuted/60 text-xs focus:outline-none focus:border-theme-sage transition-all"
+                  placeholder="••••••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-theme-textMuted hover:text-theme-text focus:outline-none transition-colors"
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  tabIndex={0}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
 

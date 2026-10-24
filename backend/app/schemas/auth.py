@@ -39,3 +39,10 @@ class ResetPasswordRequest(BaseModel):
 
 class ResetPasswordResponse(BaseModel):
     message: str
+
+class GoogleAuthRequest(BaseModel):
+    credential: str = Field(..., description="Google ID Token / Credential string received from Google Identity Services")
+
+class GoogleConfigResponse(BaseModel):
+    client_id: Optional[str] = None
+    enabled: bool = False
