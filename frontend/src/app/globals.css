@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* LIGHT MODE (Cream & Canonical Sage Green) */
+  --bg-primary: #F7F4EA;
+  --bg-secondary: #F0EBDD;
+  --bg-surface: #FFFCF5;
+  --text-primary: #171A16;
+  --text-secondary: #5D6258;
+  --text-muted: #8A8F85;
+  --border-color: #E0DDCF;
+  --border-subtle: #ECE8DD;
+  --color-sage: #8A9A78;
+  --accent-sage: #8A9A78;
+  --accent-sage-dark: #768565;
+  --accent-sage-light: #EBF0E6;
+  --color-success: #8A9A78;
+  --color-danger: #BC4749;
+  --color-warning: #DDA15E;
+
+  --brand-charcoal: #111820;
+  --brand-green: #8A9A78;
+}
+
+.dark {
+  /* DARK MODE (Near-black, Dark Charcoal & Canonical Sage Green) */
+  --bg-primary: #0B0D0B;
+  --bg-secondary: #121612;
+  --bg-surface: #191F19;
+  --text-primary: #F5F0E6;
+  --text-secondary: #B8B9B0;
+  --text-muted: #7E8278;
+  --border-color: #30382F;
+  --border-subtle: #242B23;
+  --color-sage: #8A9A78;
+  --accent-sage: #8A9A78;
+  --accent-sage-dark: #768565;
+  --accent-sage-light: #1E281C;
+  --color-success: #8A9A78;
+  --color-danger: #E07A5F;
+  --color-warning: #E9C46A;
+
+  --brand-charcoal: #0B0D0B;
+  --brand-green: #8A9A78;
+}
+
+body {
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Spatial UI Layering & Elevations */
+.spatial-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .spatial-card {
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.4);
+}
+
+.spatial-panel {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 1.25rem;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
