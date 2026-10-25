@@ -7,27 +7,39 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * India-first currency formatter with fallback for international currencies.
+ * Resilient to undefined, null, non-finite numbers, and string values.
  */
-export function formatCurrency(amount: number, currency: string = "INR"): string {
-  if (isNaN(amount)) return "₹ 0.00";
+export function formatCurrency(amount: number | string | null | undefined, currency: string = "INR"): string {
+  const curr = (currency || "INR").toUpperCase();
+  if (amount === null || amount === undefined || amount === "") {
+    return curr === "INR" ? "₹ 0.00" : `${curr} 0.00`;
+  }
   
-  if (currency.toUpperCase() === "INR") {
-    // Format according to Indian numbering system (e.g. 1,50,000.00)
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 2,
-    }).format(amount);
+  const num = typeof amount === "number" ? amount : parseFloat(String(amount));
+  if (!Number.isFinite(num) || isNaN(num)) {
+    return curr === "INR" ? "₹ 0.00" : `${curr} 0.00`;
+  }
+  
+  if (curr === "INR") {
+    try {
+      return new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 2,
+      }).format(num);
+    } catch {
+      return `₹ ${num.toFixed(2)}`;
+    }
   }
 
   try {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: currency.toUpperCase(),
+      currency: curr,
       maximumFractionDigits: 2,
-    }).format(amount);
+    }).format(num);
   } catch {
-    return `${currency} ${amount.toFixed(2)}`;
+    return `${curr} ${num.toFixed(2)}`;
   }
 }
 

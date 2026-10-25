@@ -5,7 +5,7 @@
 >
 > *Turn financial data into confident business decisions.*
 
-[![Tests](https://img.shields.io/badge/tests-30%2F30%20passing-10A86B?style=flat-square)](backend/tests/)
+[![Tests](https://img.shields.io/badge/tests-35%2F35%20passing-10A86B?style=flat-square)](backend/tests/)
 [![Python](https://img.shields.io/badge/python-3.12-blue?style=flat-square)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.124-009688?style=flat-square)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.1.7-black?style=flat-square)](https://nextjs.org/)
@@ -222,119 +222,228 @@ Cash_Flow/
 
 ---
 
-## 6. Quick Start: Running with Docker Compose (Recommended)
+---
 
-The simplest way to run the entire production-grade stack (PostgreSQL 16 + FastAPI Backend + Next.js Frontend) is via Docker Compose.
+## 6. PostgreSQL Database Configuration & Connectivity
 
-### 1. Clone & Configure Environment
-```bash
-git clone https://github.com/Nithin31-AI/CashFlow.git
-cd CashFlow
-cp .env.example .env
-```
+cashFlow uses PostgreSQL 16+ as its primary production relational database engine via SQLAlchemy 2.0 and `psycopg2-binary`, while supporting SQLite for rapid offline development.
 
-*(Optional)* Configure `GOOGLE_CLIENT_ID` in `.env` if you wish to enable Google One-Tap sign-in. If left blank, the system automatically falls back to secure email/password authentication.
+### 6.1. Prerequisites
 
-### 2. Launch the Stack
-```bash
-docker compose up -d --build
-```
-
-### 3. Verify Container Health
-```bash
-docker compose ps
-```
-All three containers should report healthy:
-- `cashflow_postgres`: PostgreSQL 16 Alpine database
-- `cashflow_backend`: FastAPI server running at `http://localhost:8000`
-- `cashflow_frontend`: Next.js 15 client running at `http://localhost:3000`
-
-### 4. Access the Application
-- **Web Application**: [`http://localhost:3000`](http://localhost:3000)
-- **Interactive Swagger API Docs**: [`http://localhost:8000/docs`](http://localhost:8000/docs)
-- **System Healthcheck Endpoint**: [`http://localhost:8000/api/v1/health`](http://localhost:8000/api/v1/health)
-
-To view live container logs:
-```bash
-docker compose logs -f
-```
-
-To gracefully shut down:
-```bash
-docker compose down
-```
+Before configuring PostgreSQL connectivity, verify you have installed:
+- **Python 3.12+** (with `pip` and `venv`)
+- **Docker & Docker Compose** (for containerized deployments)
+- **Node.js 18+** or **Node.js 20+** and `npm` (for frontend UI)
+- **PostgreSQL 16+** database instance (either self-hosted, cloud-hosted, or via Docker Compose)
 
 ---
 
-## 7. Manual Local Development Setup
+### 6.2. Obtaining a PostgreSQL Connection URL
 
-If you prefer to run services directly on your host machine for development:
+You can connect cashFlow to any standard PostgreSQL database. The required URI format is:
 
-### Prerequisites
-- **Python 3.12+**
-- **Node.js 18+** (Node 20+ recommended)
-- **Git**
+```text
+postgresql://username:password@hostname:port/database?sslmode=require
+```
 
-### Backend Setup
+#### Common Hosting Providers:
+- **Neon Serverless PostgreSQL (Recommended)**:
+  1. Sign in to [Neon Console](https://console.neon.tech/).
+  2. Create a project and database (e.g. `cashflow_db`).
+  3. Navigate to **Dashboard -> Connection Details**.
+  4. Select **Connection string** (Pooled or Direct).
+  5. Copy the connection string. Neon automatically appends `?sslmode=require`.
+- **AWS RDS / Aurora**:
+  - In AWS RDS Console, copy your DB endpoint.
+  - Set `sslmode=require` or `sslmode=verify-full` depending on certificate configuration.
+- **Supabase**:
+  - In Project Settings -> Database, copy the **Connection string (URI)**.
+  - Append `?sslmode=require` to enforce TLS certificate validation.
+- **Self-Hosted / Local PostgreSQL**:
+  ```text
+  postgresql://postgres:your_password@localhost:5432/cashflow_db
+  ```
 
-1. Open a terminal and navigate to `backend/`:
+> [!NOTE]
+> The backend connection module automatically normalizes legacy `postgres://` URLs to standard `postgresql+psycopg2://` driver URIs.
+
+---
+
+### 6.3. Creating the Backend `.env` File
+
+The backend reads its database configuration exclusively from an environment variable named `DATABASE_URL`. Database credentials are never hardcoded in source files.
+
+1. Navigate to the `backend/` directory:
    ```bash
    cd backend
    ```
 
-2. Create and activate a Python virtual environment:
-   ```bash
-   # Windows:
-   python -m venv .venv
-   .venv\Scripts\activate
-
-   # Linux/macOS:
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Create local environment configuration:
+2. Copy the example configuration template:
    ```bash
    cp .env.example .env
    ```
 
-5. Run database migrations:
-   ```bash
-   python -m alembic upgrade head
-   ```
-
-6. Start the development server with live reload:
-   ```bash
-   python -m uvicorn app.main:app --port 8000 --reload
-   ```
-   API Docs available at `http://localhost:8000/docs`.
-
-### Frontend Setup
-
-1. Open a second terminal and navigate to `frontend/`:
-   ```bash
-   cd frontend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install --legacy-peer-deps
-   ```
-
-3. Start the Next.js development server:
-   ```bash
-   npm run dev -- -p 3000
-   ```
-   Web interface available at `http://localhost:3000`.
+3. Open `backend/.env` in your text editor.
 
 ---
 
-## 8. Automated Testing & Verification
+### 6.4. Configuring `DATABASE_URL`
+
+Update `DATABASE_URL` in `backend/.env` with your actual connection URL:
+
+```env
+# Database connection (PostgreSQL):
+DATABASE_URL=postgresql://username:password@hostname/database?sslmode=require
+
+# Security & Session Authentication:
+SECRET_KEY=cashflow-production-super-secure-jwt-secret-key-min-32-chars-replace-me
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+# File Storage:
+UPLOAD_DIR=./uploads
+MAX_UPLOAD_SIZE_MB=15
+
+# Allowed CORS Origins:
+CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
+
+# Mode:
+ENVIRONMENT=development
+DEV_MODE=true
+```
+
+> [!CAUTION]
+> - Never commit `.env` to version control. The root `.gitignore` excludes `.env` and `.env.*`.
+> - Do not remove `sslmode=require` on cloud providers to ensure encrypted data in transit.
+
+---
+
+### 6.5. Testing the PostgreSQL Connection
+
+You can verify database connectivity and execute `SELECT NOW();` using several methods:
+
+#### Method A: Using the Automated Test Suite
+Run the dedicated database connection test suite:
+```bash
+cd backend
+python -m pytest tests/test_database_connection.py -v
+```
+
+#### Method B: Using Python CLI
+Execute a direct health-check query:
+```bash
+cd backend
+python -c "from app.db.session import check_database_health; print(check_database_health())"
+```
+Expected output:
+```json
+{'status': 'healthy', 'database': 'postgresql', 'server_time': '2026-10-25 10:58:15.677212+00:00'}
+```
+
+#### Method C: Using the System Health Endpoint
+When the backend server is running:
+```bash
+curl http://localhost:8000/api/v1/health
+```
+Response:
+```json
+{
+  "status": "healthy",
+  "app": "cashFlow",
+  "tagline": "PLAN • FORECAST • GROW",
+  "environment": "development",
+  "database": {
+    "status": "healthy",
+    "database": "postgresql",
+    "server_time": "2026-10-25 10:58:15.677212+00:00"
+  }
+}
+```
+
+---
+
+### 6.6. Running Database Migrations
+
+Apply database schema migrations to your PostgreSQL database using Alembic:
+
+```bash
+cd backend
+python -m alembic upgrade head
+```
+
+To seed the initial benchmark dataset (`Acme Consulting Tech Ltd`):
+```bash
+python app/scripts/seed_acme_synthetic_data.py
+```
+
+---
+
+### 6.7. Running the Application Locally
+
+#### 1. Backend Server:
+```bash
+cd backend
+# Activate virtual environment
+# Windows: .venv\Scripts\activate | Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+API Documentation will be available at [`http://localhost:8000/docs`](http://localhost:8000/docs).
+
+#### 2. Frontend Client:
+In a separate terminal:
+```bash
+cd frontend
+npm install --legacy-peer-deps
+npm run dev -- -p 3000
+```
+Open [`http://localhost:3000`](http://localhost:3000) in your browser.
+
+---
+
+### 6.8. Building and Running with Docker & Docker Compose
+
+Docker Compose coordinates the full stack and automatically injects `DATABASE_URL` into the backend container from `./backend/.env`:
+
+1. Ensure `backend/.env` is configured with your `DATABASE_URL`.
+2. Build the Docker images:
+   ```bash
+   docker compose build
+   ```
+3. Start the containers in detached mode:
+   ```bash
+   docker compose up -d
+   ```
+4. Verify container statuses:
+   ```bash
+   docker compose ps
+   ```
+5. Inspect container logs safely (passwords are automatically redacted in logs):
+   ```bash
+   docker compose logs -f backend
+   ```
+6. Shut down containers cleanly:
+   ```bash
+   docker compose down
+   ```
+
+---
+
+### 6.9. Troubleshooting Common Database Connection Errors
+
+| Error Message / Symptom | Likely Cause | Solution |
+| :--- | :--- | :--- |
+| **`DATABASE_URL environment variable is missing or empty`** | `DATABASE_URL` is unset or empty in `backend/.env`. | Create `backend/.env` by copying `backend/.env.example` and set a valid PostgreSQL connection string. |
+| **`connection to server at "..." failed: Connection refused`** | Database host is unreachable, down, or firewall is blocking port 5432. | Confirm database server is active and accessible. Verify host address and port. For cloud DBs, check security group IP allowlists. |
+| **`password authentication failed for user "..."`** | Incorrect database username or password. | Double-check credentials in `DATABASE_URL`. Ensure special characters in passwords are percent-encoded (e.g. `@` as `%40`). |
+| **`no pg_hba.conf entry for host ... no encryption`** | Cloud provider requires SSL/TLS, but `sslmode=require` was omitted. | Ensure `?sslmode=require` is present at the end of `DATABASE_URL`. |
+| **`certificate verify failed`** | Hostname mismatch or missing CA certificates in client runtime. | Install `ca-certificates` or verify provider root certificate. Do not disable SSL validation. |
+| **`database "..." does not exist`** | The database name specified in the connection URL has not been created yet. | Create the target database in your PostgreSQL instance: `CREATE DATABASE cashflow_db;`. |
+| **`Health check returns 503 degraded`** | Application is running, but the PostgreSQL database is unreachable. | Check backend container logs with `docker compose logs backend` to inspect connectivity warnings without exposed credentials. |
+
+---
+
+## 7. Automated Testing & Verification
 
 cashFlow enforces strict test-driven reliability. Every core algorithm, multi-tenant boundary, and financial calculation is guarded by automated test suites.
 
@@ -343,10 +452,11 @@ cashFlow enforces strict test-driven reliability. Every core algorithm, multi-te
 cd backend
 python -m pytest tests -v
 ```
-**Results: 30 passed in ~20s (100% pass rate)**
+**Results: 35 passed in ~25s (100% pass rate)**
 
 | Test Suite | Focus Area |
 | :--- | :--- |
+| `tests/test_database_connection.py` | PostgreSQL connectivity, `SELECT NOW()` health checks, URL driver normalization, `DATABASE_URL` validation |
 | `tests/test_auth.py` | Registration, bcrypt hashing, JWT issuance, password recovery, Google OAuth config & linking |
 | `tests/test_tenancy.py` | Strict multi-tenant query isolation and 403 authorization enforcement |
 | `tests/test_rbac.py` | Permissions across `OWNER`, `FINANCE_MANAGER`, `ACCOUNTANT`, and `VIEWER` |

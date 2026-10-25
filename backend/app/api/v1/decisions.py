@@ -1,5 +1,5 @@
-from typing import Optional, List
-from datetime import date
+from typing import Optional, List, Dict, Any
+from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,7 +8,7 @@ from app.api.deps import get_db, get_current_user, require_viewer_or_higher, req
 from app.models.user import User
 from app.models.membership import BusinessMembership
 from app.models.goal import FinancialGoal, GoalType, GoalStatus
-from app.models.scenario import SavedScenario, OptimisationPlan
+from app.models.scenario import SavedScenario, OptimisationPlan, OptimisationStatus
 from app.models.recommendation import FinancialRecommendation, RecommendationStatus
 from app.services.decision_service import DecisionService
 
@@ -23,6 +23,23 @@ class GoalCreate(BaseModel):
     priority: int = 1
     notes: Optional[str] = None
 
+class GoalOut(BaseModel):
+    id: str
+    business_id: str
+    name: str
+    goal_type: GoalType
+    target_amount: Decimal
+    target_date: Optional[date] = None
+    is_hard_constraint: bool
+    priority: int
+    status: GoalStatus
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class ScenarioCreate(BaseModel):
     name: str
     description: Optional[str] = None
@@ -31,7 +48,57 @@ class ScenarioCreate(BaseModel):
     expense_multiplier: float = Field(default=1.0, ge=0.1, le=3.0)
     one_off_capex: float = Field(default=0.0, ge=0.0)
 
-@router.get("/{business_id}/goals")
+class ScenarioOut(BaseModel):
+    id: str
+    business_id: str
+    created_by_user_id: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    is_baseline: bool = False
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+    projected_ending_cash: float
+    min_cash: float
+    shortage_risk_percent: float = 0.0
+    runway_days: int = 90
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class OptimisationPlanOut(BaseModel):
+    id: str
+    business_id: str
+    scenario_id: Optional[str] = None
+    status: OptimisationStatus
+    objective_value: float
+    recommended_actions: List[Any] = Field(default_factory=list)
+    trade_offs: Optional[str] = None
+    hard_constraints_satisfied: bool = True
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class RecommendationOut(BaseModel):
+    id: str
+    business_id: str
+    title: str
+    action_type: str
+    severity: str
+    estimated_impact: float
+    reasoning: str
+    supporting_records: Optional[Dict[str, Any]] = None
+    assumptions: Optional[str] = None
+    disadvantages: Optional[str] = None
+    status: RecommendationStatus
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+@router.get("/{business_id}/goals", response_model=List[GoalOut])
 def list_goals(
     business_id: str,
     membership: BusinessMembership = Depends(require_viewer_or_higher),
@@ -44,7 +111,7 @@ def list_goals(
         .all()
     )
 
-@router.post("/{business_id}/goals", status_code=status.HTTP_201_CREATED)
+@router.post("/{business_id}/goals", response_model=GoalOut, status_code=status.HTTP_201_CREATED)
 def create_or_update_goal(
     business_id: str,
     req: GoalCreate,
@@ -63,7 +130,7 @@ def create_or_update_goal(
         notes=req.notes,
     )
 
-@router.get("/{business_id}/scenarios")
+@router.get("/{business_id}/scenarios", response_model=List[ScenarioOut])
 def list_scenarios(
     business_id: str,
     membership: BusinessMembership = Depends(require_viewer_or_higher),
@@ -89,10 +156,11 @@ def list_scenarios(
         )
         baseline.is_baseline = True
         db.commit()
+        db.refresh(baseline)
         scenarios = [baseline]
     return scenarios
 
-@router.post("/{business_id}/scenarios", status_code=status.HTTP_201_CREATED)
+@router.post("/{business_id}/scenarios", response_model=ScenarioOut, status_code=status.HTTP_201_CREATED)
 def create_scenario(
     business_id: str,
     req: ScenarioCreate,
@@ -112,7 +180,7 @@ def create_scenario(
         user_id=current_user.id,
     )
 
-@router.post("/{business_id}/optimisation/run")
+@router.post("/{business_id}/optimisation/run", response_model=OptimisationPlanOut)
 def run_optimisation(
     business_id: str,
     scenario_id: Optional[str] = None,
@@ -125,7 +193,7 @@ def run_optimisation(
         scenario_id=scenario_id,
     )
 
-@router.get("/{business_id}/recommendations")
+@router.get("/{business_id}/recommendations", response_model=List[RecommendationOut])
 def list_recommendations(
     business_id: str,
     membership: BusinessMembership = Depends(require_viewer_or_higher),
@@ -148,7 +216,7 @@ def list_recommendations(
         )
     return recs
 
-@router.post("/{business_id}/recommendations/{rec_id}/status")
+@router.post("/{business_id}/recommendations/{rec_id}/status", response_model=RecommendationOut)
 def update_recommendation_status(
     business_id: str,
     rec_id: str,
@@ -172,4 +240,5 @@ def update_recommendation_status(
         raise HTTPException(status_code=400, detail="Invalid status. Must be ACCEPTED or DISMISSED.")
 
     db.commit()
+    db.refresh(rec)
     return rec

@@ -103,7 +103,9 @@ class DecisionService:
             parameters={
                 "receivable_delay_days": receivable_delay_days,
                 "collection_rate_pct": collection_rate_pct,
+                "collection_rate_percent": collection_rate_pct,
                 "expense_multiplier": expense_multiplier,
+                "expense_growth_multiplier": expense_multiplier,
                 "one_off_capex": one_off_capex,
             },
             projected_ending_cash=Decimal(str(round(projected_ending, 2))),

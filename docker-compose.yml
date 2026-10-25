@@ -37,20 +37,17 @@ services:
     image: cashflow-backend:latest
     container_name: cashflow_backend
     restart: unless-stopped
+    env_file:
+      - ./backend/.env
     environment:
-      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgrespassword}@db:5432/${POSTGRES_DB:-cashflow_db}
-      - SECRET_KEY=${SECRET_KEY:-cashflow-production-grade-jwt-secret-key-min-32-chars}
-      - CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
-      - DEV_MODE=${DEV_MODE:-false}
-      - ENVIRONMENT=production
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - UPLOAD_DIR=/app/uploads
+      - CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
+        required: false
     volumes:
       - backend_uploads:/app/uploads
     healthcheck:

@@ -14,7 +14,19 @@ class Settings(BaseSettings):
     DEV_MODE: bool = True
     
     # Database
-    DATABASE_URL: str = "sqlite:///./cashflow.db"
+    DATABASE_URL: str = ""
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def validate_database_url(cls, v: Union[str, None]) -> str:
+        val = str(v).strip() if v else ""
+        if not val:
+            raise ValueError(
+                "DATABASE_URL environment variable is missing or empty. "
+                "Please configure DATABASE_URL in your backend/.env file "
+                "(format: postgresql://username:password@hostname/database?sslmode=require)."
+            )
+        return val
     
     # Security & Tokens
     SECRET_KEY: str = "cashflow-stage1-super-secure-jwt-secret-key-change-in-production-min32"

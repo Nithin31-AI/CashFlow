@@ -376,16 +376,24 @@ export default function DecisionsPage() {
                       <span className="text-[var(--foreground)]/60">Shortage Risk</span>
                       <span
                         className={`font-semibold ${
-                          sc.shortage_risk_percent > 30 ? "text-red-500" : "text-[var(--color-sage)]"
+                          Number.isFinite(Number(sc.shortage_risk_percent)) && Number(sc.shortage_risk_percent) > 30
+                            ? "text-red-500"
+                            : "text-[var(--color-sage)]"
                         }`}
                       >
-                        {sc.shortage_risk_percent.toFixed(1)}%
+                        {Number.isFinite(Number(sc.shortage_risk_percent))
+                          ? `${Number(sc.shortage_risk_percent).toFixed(1)}%`
+                          : "0.0%"}
                       </span>
                     </div>
                     <div className="flex justify-between py-1.5 border-b border-[var(--border)]/40">
                       <span className="text-[var(--foreground)]/60">Estimated Runway</span>
                       <span className="font-semibold text-[var(--foreground)]">
-                        {sc.runway_days >= 365 ? "365+ days" : `${sc.runway_days} days`}
+                        {Number.isFinite(Number(sc.runway_days))
+                          ? Number(sc.runway_days) >= 365
+                            ? "365+ days"
+                            : `${sc.runway_days} days`
+                          : "N/A"}
                       </span>
                     </div>
                   </div>
@@ -399,17 +407,17 @@ export default function DecisionsPage() {
                         Delay: +{sc.parameters.receivable_delay_days}d
                       </span>
                     )}
-                    {sc.parameters.collection_rate_percent !== undefined && (
+                    {(sc.parameters.collection_rate_percent !== undefined || sc.parameters.collection_rate_pct !== undefined) && (
                       <span className="px-2 py-0.5 rounded bg-[var(--foreground)]/5 text-[10px] text-[var(--foreground)]/70">
-                        Collect: {sc.parameters.collection_rate_percent}%
+                        Collect: {sc.parameters.collection_rate_percent ?? sc.parameters.collection_rate_pct}%
                       </span>
                     )}
-                    {sc.parameters.expense_growth_multiplier !== undefined && (
+                    {(sc.parameters.expense_growth_multiplier !== undefined || sc.parameters.expense_multiplier !== undefined) && (
                       <span className="px-2 py-0.5 rounded bg-[var(--foreground)]/5 text-[10px] text-[var(--foreground)]/70">
-                        Expense: {sc.parameters.expense_growth_multiplier}x
+                        Expense: {sc.parameters.expense_growth_multiplier ?? sc.parameters.expense_multiplier}x
                       </span>
                     )}
-                    {sc.parameters.one_off_capex > 0 && (
+                    {Number(sc.parameters.one_off_capex) > 0 && (
                       <span className="px-2 py-0.5 rounded bg-[var(--foreground)]/5 text-[10px] text-[var(--foreground)]/70">
                         CapEx: {formatCurrency(sc.parameters.one_off_capex, currentBusiness?.currency)}
                       </span>

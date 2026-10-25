@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
-from app.db.session import engine, Base
+from app.db.session import engine, Base, check_database_health, dispose_engine
 import app.models  # Ensure all models are registered
 from app.api.v1.router import api_router
 
@@ -18,11 +18,28 @@ logger = logging.getLogger("cashflow")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Initializing %s backend services...", settings.PROJECT_NAME)
-    # Ensure database schema exists
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database initialized successfully.")
+    safe_db_url = engine.url.render_as_string(hide_password=True)
+    logger.info("Database connection target: %s", safe_db_url)
+    
+    try:
+        # Perform health check query (SELECT NOW()) during startup
+        health = check_database_health()
+        if health.get("status") == "healthy":
+            logger.info("Database connectivity verified successfully (server time: %s).", health.get("server_time"))
+        else:
+            logger.warning("Database connectivity degraded during startup: %s", health.get("error"))
+        
+        # Ensure database schema exists
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database schema verified.")
+    except Exception as exc:
+        logger.error("Database connection initialization failure: %s", type(exc).__name__)
+        logger.warning("Application starting in degraded mode; database operations may fail until connectivity is restored.")
+
     yield
+
     logger.info("Shutting down %s backend services...", settings.PROJECT_NAME)
+    dispose_engine()
 
 app = FastAPI(
     title=f"{settings.PROJECT_NAME} API",
@@ -54,12 +71,22 @@ async def security_headers_middleware(request: Request, call_next):
 @app.get("/health", tags=["Health"])
 @app.get("/api/v1/health", tags=["Health"])
 def health_check():
-    return {
-        "status": "healthy",
+    """
+    Database and application health-check endpoint.
+    Executes 'SELECT NOW();' to confirm active PostgreSQL database connectivity.
+    """
+    db_health = check_database_health()
+    is_db_healthy = db_health.get("status") == "healthy"
+    
+    payload = {
+        "status": "healthy" if is_db_healthy else "degraded",
         "app": settings.PROJECT_NAME,
         "tagline": settings.TAGLINE,
         "environment": settings.ENVIRONMENT,
+        "database": db_health,
     }
+    status_code = 200 if is_db_healthy else 503
+    return JSONResponse(status_code=status_code, content=payload)
 
 # Include v1 router
 app.include_router(api_router, prefix=settings.API_V1_STR)
