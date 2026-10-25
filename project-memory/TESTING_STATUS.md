@@ -5,7 +5,7 @@
 - **Backend Test Framework**: `pytest` 9.1.1, `pytest-asyncio` 1.4.0, `httpx` 0.28.1 (FastAPI TestClient).
 - **Execution Date**: 2026-10-25
 - **Execution Command**: `python -m pytest tests -v` (inside `backend/`)
-- **Backend Result**: **35 PASSED, 0 FAILED** (100% pass rate in 71.08s).
+- **Backend Result**: **39 PASSED, 0 FAILED** (100% pass rate across 17 test suites).
 - **Frontend Type Validation**: `npx tsc --noEmit` (inside `frontend/`)
 - **Frontend Result**: **0 ERRORS, 0 WARNINGS** (Exited with code 0 across all Next.js routes).
 - **Frontend Production Build**: `npm run build` (inside `frontend/`) — **0 ERRORS**, all 23 routes built successfully.
@@ -55,6 +55,10 @@
 | `tests/test_forecasting_and_risk.py::test_cash_flow_forecast_horizons` | AI / Forecasting | `PASSED` | ~1.7s | Verifies multi-horizon forecast engine generating projections across 7d, 30d, 90d, 180d, 365d with confidence bounds. |
 | `tests/test_forecasting_and_risk.py::test_risk_prediction_and_reserve_shortfall` | Risk Prediction | `PASSED` | ~1.5s | Verifies cash-shortage early warning heuristic against configurable minimum cash reserve, generating severity levels. |
 | `tests/test_forecasting_and_risk.py::test_payment_delay_risk` | Risk Prediction | `PASSED` | ~1.3s | Verifies invoice payment-delay scoring based on overdue days and customer payment history. |
+| `tests/test_system_integration_repairs.py::test_statement_import_creates_transactions_and_updates_account_balance` | BUG 1 / Integration | `PASSED` | ~2.5s | Verifies confirming an import job generates authoritative `Transaction` rows, infers category, links `imported_record_id`, updates account balance, and feeds forecasting and simulation engines. |
+| `tests/test_system_integration_repairs.py::test_invoice_payment_creates_transaction_and_updates_cash` | BUG 2 / Integration | `PASSED` | ~1.2s | Verifies recording an invoice payment creates exactly one `Transaction` linked via `payment_id`, updates invoice to `PAID`, and increments account cash balance. |
+| `tests/test_system_integration_repairs.py::test_payment_idempotency_and_overpayment_validation` | BUG 2 / Security | `PASSED` | ~1.4s | Verifies overpayment rejection (400), duplicate payment reference rejection (409), and blocks direct PATCH of invoice status to `PAID` without payment (400). |
+| `tests/test_system_integration_repairs.py::test_assistant_tool_execution_and_forecast_dictionary_handling` | BUG 3 / AI Assistant | `PASSED` | ~2.1s | Verifies crash-free assistant execution with dictionary forecasting return, validates new tools (`get_expenses_summary`, `get_cash_flow_risks`), and validates tenant isolation boundaries. |
 
 ---
 
@@ -86,3 +90,16 @@
      3. Added Pydantic response models (`GoalOut`, `ScenarioOut`, `OptimisationPlanOut`, `RecommendationOut` with `from_attributes = True`) and `db.refresh(baseline)` in `backend/app/api/v1/decisions.py`.
      4. Supported both parameter alias conventions in `DecisionService.evaluate_scenario`.
    - *Verification*: `npm run build` completed with 0 errors across all 23 Next.js routes. Backend test suite passed 35/35 tests in 71.08s.
+7. **BUG 1 — Uploaded Financial Statement Data Disconnected from Ledger & Analysis**:
+   - *Problem*: Ingested statements saved records only to `imported_records` and omitted `transactions`, leaving downstream cash analysis, forecasts, and risk models devoid of imported activity.
+   - *Root Cause*: `confirm_and_save_import` in `imports.py` lacked `Transaction` generation, and downstream services only read from `Transaction`.
+   - *Fix*: Created Alembic migration `c3d4e5f6a7b8` linking payments and transactions; updated `confirm_and_save_import` to generate authoritative `Transaction` records with rule-based transaction category classification (`PAYROLL`, `RENT`, `SOFTWARE`, `CONSULTING`, `UTILITIES`, etc.) and link `imported_record_id`; recalculated account balance immediately; updated `ForecastingService` and `SimulationService` to incorporate both `Transaction` and unlinked `ImportedRecord` historical records.
+8. **BUG 2 — Invoice Payment Disconnected from Ledger & Cash Position**:
+   - *Problem*: Recording payment updated invoice status but failed to reflect in transaction history or account balances; users could directly mark unpaid invoices as `PAID`.
+   - *Root Cause*: `record_payment` in `invoices.py` inserted into `payments` but created no `Transaction` record; lacked overpayment validation; no dedicated status endpoint existed to govern settlement transitions.
+   - *Fix*: Updated `record_payment` to validate `amount > 0` and `amount <= unpaid`, enforce idempotency, check for matching unreconciled bank transactions to avoid double-counting, generate exactly one `Transaction` linked by `payment_id`, and recalculate deposit account balance. Added `PATCH /invoices/{id}/status` blocking direct transition to `PAID` without full payment. Updated frontend invoice payment modal with account selection and remaining balance enforcement.
+9. **BUG 3 — AI Layer Failure & Generic "Backend Not Connected" Masking**:
+   - *Problem*: AI Assistant queries failed with generic frontend message "Check correctly, your backend is not connected" or crashed during forecast/expense questions.
+   - *Root Cause*: `AssistantService.execute_tool` called `fc.horizon_days` on a dictionary returned by `ForecastingService`, crashing with `AttributeError: 'dict' object has no attribute 'horizon_days'`; lacked tools for expense breakdowns, risks, scenarios, payments, and historical cash flow; frontend catch block unconditionally displayed "backend not connected" regardless of error status (401, 403, 500).
+   - *Fix*: Updated `AssistantService` to handle dual dict/object indexing and safe Decimal math; implemented 5 missing tools (`get_expenses_summary`, `get_recorded_payments`, `get_cash_flow_risks`, `get_scenario_summary`, `get_historical_cash_flow`); updated frontend error handler to diagnostically display server errors, unauthorized redirects, and specific root causes.
+

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_viewer_or_higher
 from app.models.membership import BusinessMembership
@@ -24,8 +24,13 @@ def ask_assistant(
             query=req.query,
         )
         return response
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to process financial query: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Financial intelligence assistant error: {str(e)}"
+        )
 
 @router.get("/{business_id}/assistant/tools")
 def list_available_tools(
@@ -44,6 +49,16 @@ def list_available_tools(
             "type": "ACCOUNTS_RECEIVABLE",
         },
         {
+            "name": "get_recorded_payments",
+            "description": "Fetches recent customer payment settlements and payment methods.",
+            "type": "ACCOUNTS_RECEIVABLE",
+        },
+        {
+            "name": "get_expenses_summary",
+            "description": "Calculates categorized expense outflows (Payroll, Rent, Software, Consulting, etc.).",
+            "type": "DETERMINISTIC_ACCOUNTING",
+        },
+        {
             "name": "get_forecast_summary",
             "description": "Calculates multi-horizon cash trajectory and 95% confidence bounds.",
             "type": "STATISTICAL_PROJECTION",
@@ -57,5 +72,20 @@ def list_available_tools(
             "name": "get_recommendations",
             "description": "Fetches active explainable financial recommendations and mitigation actions.",
             "type": "DECISION_OPTIMIZATION",
+        },
+        {
+            "name": "get_cash_flow_risks",
+            "description": "Fetches active sentinel alerts, cash shortfall risks, and reserve breaches.",
+            "type": "RISK_PREDICTION",
+        },
+        {
+            "name": "get_scenario_summary",
+            "description": "Fetches saved decision scenarios and status quo baseline comparisons.",
+            "type": "DECISION_OPTIMIZATION",
+        },
+        {
+            "name": "get_historical_cash_flow",
+            "description": "Fetches historical revenue, expense, and net cash flow trends.",
+            "type": "DETERMINISTIC_ACCOUNTING",
         },
     ]

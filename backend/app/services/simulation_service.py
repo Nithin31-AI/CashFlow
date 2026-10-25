@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from app.models.business import Business
-from app.models.transaction import Transaction, TransactionType, TransactionStatus
+from app.models.transaction import Transaction, ImportedRecord, TransactionType, TransactionStatus
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.simulation import SimulationRun
 from app.services.financial_service import FinancialService
@@ -49,12 +49,26 @@ class SimulationService:
         inflows = [float(t.amount) for t in transactions if t.amount > 0]
         outflows = [abs(float(t.amount)) for t in transactions if t.amount < 0]
 
-        mean_daily_inflow = (sum(inflows) / max(len(inflows), 1) / 30.0) if inflows else 2000.0
-        mean_daily_outflow = (sum(outflows) / max(len(outflows), 1) / 30.0) if outflows else 1500.0
-
         daily_net_changes = []
         for t in transactions:
             daily_net_changes.append(float(t.amount))
+
+        # Include any unlinked imported records
+        existing_tx_imp_ids = {t.imported_record_id for t in transactions if t.imported_record_id}
+        unlinked_records = db.query(ImportedRecord).filter(
+            ImportedRecord.business_id == business_id
+        ).all()
+        for imp in unlinked_records:
+            if imp.id not in existing_tx_imp_ids:
+                amt = float(imp.amount)
+                if amt > 0:
+                    inflows.append(amt)
+                else:
+                    outflows.append(abs(amt))
+                daily_net_changes.append(amt)
+
+        mean_daily_inflow = (sum(inflows) / max(len(inflows), 1) / 30.0) if inflows else 2000.0
+        mean_daily_outflow = (sum(outflows) / max(len(outflows), 1) / 30.0) if outflows else 1500.0
 
         if len(daily_net_changes) > 1:
             daily_sigma = float(np.std(daily_net_changes)) / 2.0

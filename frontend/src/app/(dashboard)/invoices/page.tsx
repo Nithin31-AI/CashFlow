@@ -14,12 +14,14 @@ import {
   Search,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { api, InvoiceRecord } from "@/lib/api";
+import { api, InvoiceRecord, FinancialAccount } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function InvoicesPage() {
   const { currentBusiness } = useAuth();
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -47,10 +49,18 @@ export default function InvoicesPage() {
     if (!currentBusiness) return;
     setIsLoading(true);
     try {
-      const data = await api.listInvoices(currentBusiness.id);
-      setInvoices(data);
+      const [invData, accData] = await Promise.all([
+        api.listInvoices(currentBusiness.id),
+        api.listAccounts(currentBusiness.id).catch(() => [] as FinancialAccount[]),
+      ]);
+      setInvoices(invData);
+      setAccounts(accData);
+      if (accData.length > 0 && !selectedAccountId) {
+        const bankAcc = accData.find((a) => a.account_type === "BANK") || accData[0];
+        setSelectedAccountId(bankAcc.id);
+      }
     } catch (err: any) {
-      console.error("Failed to load invoices:", err);
+      console.error("Failed to load invoices or accounts:", err);
     } finally {
       setIsLoading(false);
     }
@@ -110,8 +120,16 @@ export default function InvoicesPage() {
         throw new Error("Please enter a valid payment amount.");
       }
 
+      const unpaid = showPaymentModal.total_amount - (showPaymentModal.amount_paid || 0);
+      if (pAmt > unpaid + 0.0001) {
+        throw new Error(
+          `Payment amount (${formatCurrency(pAmt, showPaymentModal.currency)}) exceeds remaining balance of ${formatCurrency(unpaid, showPaymentModal.currency)}.`
+        );
+      }
+
       await api.recordPayment(currentBusiness.id, {
         invoice_id: showPaymentModal.id,
+        account_id: selectedAccountId || undefined,
         payment_date: new Date().toISOString().split("T")[0],
         amount: pAmt,
         currency: showPaymentModal.currency,
@@ -419,9 +437,15 @@ export default function InvoicesPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="spatial-panel p-6 max-w-md w-full shadow-2xl">
             <h2 className="text-base font-bold text-theme-text mb-1">Record Payment</h2>
-            <p className="text-xs text-theme-textMuted mb-4">
+            <p className="text-xs text-theme-textMuted mb-2">
               Allocate cash received for {showPaymentModal.invoice_number} ({showPaymentModal.customer_name})
             </p>
+            <div className="mb-4 p-2.5 rounded-xl bg-theme-surface border border-theme-border flex justify-between items-center text-xs">
+              <span className="text-theme-textMuted">Remaining Balance:</span>
+              <span className="font-bold text-theme-text">
+                {formatCurrency(showPaymentModal.total_amount - (showPaymentModal.amount_paid || 0), showPaymentModal.currency)}
+              </span>
+            </div>
 
             {formError && (
               <div className="p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 text-xs">
@@ -442,6 +466,23 @@ export default function InvoicesPage() {
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-theme-surface border border-theme-border text-theme-text focus:border-theme-sage outline-none"
                 />
+              </div>
+              <div>
+                <label className="block text-theme-textMuted font-bold uppercase text-[10px] mb-1">
+                  Deposit Account
+                </label>
+                <select
+                  value={selectedAccountId}
+                  onChange={(e) => setSelectedAccountId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-theme-surface border border-theme-border text-theme-text focus:border-theme-sage outline-none"
+                >
+                  <option value="">Auto-select Primary Bank Account</option>
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name} ({acc.account_type}) - Balance: {formatCurrency(acc.current_balance || 0, acc.currency)}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-theme-textMuted font-bold uppercase text-[10px] mb-1">

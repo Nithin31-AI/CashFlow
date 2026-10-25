@@ -249,3 +249,40 @@ This document records significant architectural, technical, and design decisions
 - **Reason**: Eliminates all client-side runtime crashes, establishes strict API response contracts, and guarantees graceful degradation for incomplete or zero-state scenario records.
 - **Affected Files**: `frontend/src/app/(dashboard)/decisions/page.tsx`, `frontend/src/lib/utils.ts`, `backend/app/api/v1/decisions.py`, `backend/app/services/decision_service.py`.
 
+---
+
+### DEC-020: Transaction Ledger Synchronization for Statement Ingestion and Invoice Payments
+- **Date**: 2026-10-25
+- **Status**: `ACTIVE`
+- **Context**: Ingestion of bank statements and invoice payments previously failed to propagate into authoritative `Transaction` ledger records.
+- **Problem**:
+  1. Import confirmation inserted only into `imported_records` and omitted `transactions`, leaving accounts, cash position, forecasts, and Monte Carlo models without ingested inflows/outflows.
+  2. Invoice payment creation wrote to `payments` and `invoices` but did not create a `Transaction` or link to unreconciled transactions, creating a disconnect between receivables and cash. Status could also be set to `PAID` without payment.
+- **Chosen Approach**:
+  1. Added `payment_id` column with unique index `ix_transactions_payment_id` to `transactions` table via Alembic revision `c3d4e5f6a7b8`.
+  2. Enhanced `confirm_and_save_import` to generate authoritative `Transaction` records with rule-based transaction category classification (`PAYROLL`, `RENT`, `SOFTWARE`, `CONSULTING`, `UTILITIES`, `MARKETING`, `TAX`, etc.), link `imported_record_id`, and immediately recalculate `account.current_balance`.
+  3. Updated `ForecastingService` and `SimulationService` to account for both `Transaction` and unlinked `ImportedRecord` outflows/inflows.
+  4. Enhanced `record_payment` to validate `amount > 0` and `amount <= unpaid`, check idempotency, check for matching unreconciled bank transaction to avoid double cash counting, create a single `Transaction` with `payment_id = payment.id`, and recalculate account balance.
+  5. Added `PATCH /invoices/{id}/status` enforcing that an invoice cannot be marked `PAID` without full settlement.
+- **Reason**: Guarantees accounting integrity where every cash movement reflects in ledger transactions, prevents double counting, and eliminates drift between accounts, invoices, and cash forecasting.
+- **Affected Files**: `backend/alembic/versions/c3d4e5f6a7b8_link_payments_and_transactions.py`, `backend/app/models/transaction.py`, `backend/app/models/invoice.py`, `backend/app/api/v1/imports.py`, `backend/app/api/v1/invoices.py`, `backend/app/services/forecasting_service.py`, `backend/app/services/simulation_service.py`, `frontend/src/app/(dashboard)/invoices/page.tsx`, `backend/tests/test_system_integration_repairs.py`.
+
+---
+
+### DEC-021: AI Assistant Grounded Tool Multi-Dispatch & Diagnostic Exception Handling
+- **Date**: 2026-10-25
+- **Status**: `ACTIVE`
+- **Context**: The AI Assistant crashed or reported backend connectivity failures ("Check correctly, your backend is not connected").
+- **Problem**:
+  1. `ForecastingService.generate_forecast` returned a `dict`, but `AssistantService` called `fc.horizon_days`, throwing `AttributeError`.
+  2. Missing tools for expense breakdowns, recorded payments, risks, decision scenarios, and historical performance caused unhandled queries.
+  3. Frontend error handling unconditionally masked all errors as "backend not accessible", hiding 401/403/500 diagnostic details.
+- **Chosen Approach**:
+  1. Replaced object property access with dual dict/object indexing (`fc["horizon_days"] if isinstance(fc, dict) else fc.horizon_days`) and safe enum value extraction.
+  2. Implemented 5 missing grounded tools: `get_expenses_summary`, `get_recorded_payments`, `get_cash_flow_risks`, `get_scenario_summary`, `get_historical_cash_flow` (expanding suite to 10 deterministic tools).
+  3. Expanded intent routing in `answer_query` and added out-of-scope intent guardrails.
+  4. Updated frontend error handling to report specific error messages, authentication status (401/403), and backend operational hints rather than a generic disconnect notice.
+- **Reason**: Ensures 100% crash-free tool execution, grounds responses directly in verified business data, and provides developers and users with actionable diagnostics.
+- **Affected Files**: `backend/app/services/assistant_service.py`, `backend/app/api/v1/assistant.py`, `frontend/src/app/(dashboard)/assistant/page.tsx`, `backend/tests/test_system_integration_repairs.py`.
+
+

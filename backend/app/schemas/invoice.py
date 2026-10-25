@@ -72,3 +72,7 @@ class PaymentOut(BaseModel):
     unallocated_amount: Decimal
     notes: Optional[str] = None
     created_at: datetime
+
+class InvoiceStatusUpdate(BaseModel):
+    status: str
+

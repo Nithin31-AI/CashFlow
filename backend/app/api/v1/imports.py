@@ -12,16 +12,24 @@ from app.api.deps import (
 )
 from app.core.audit import record_audit_log
 from app.models.user import User
+from decimal import Decimal
 from app.models.membership import BusinessMembership
 from app.models.file import UploadedFile, FileStatus
-from app.models.account import FinancialAccount
+from app.models.account import FinancialAccount, AccountType
 from app.models.import_job import (
     ImportJob, 
     ImportJobStatus, 
     ImportMapping, 
     ImportValidationResult
 )
-from app.models.transaction import ImportedRecord
+from app.models.transaction import (
+    ImportedRecord,
+    Transaction,
+    TransactionType,
+    TransactionCategory,
+    TransactionStatus
+)
+from app.services.financial_service import FinancialService
 from app.services.csv_parser import parse_csv_file
 from app.services.excel_parser import parse_excel_file
 from app.services.column_detector import detect_column_mappings
@@ -277,6 +285,33 @@ def get_import_preview(
         preview_rows=preview_items,
     )
 
+def infer_transaction_category(description: str, amount: Decimal) -> TransactionCategory:
+    desc = (description or "").lower()
+    if any(w in desc for w in ["payroll", "salary", "wages", "stipend"]):
+        return TransactionCategory.PAYROLL
+    elif any(w in desc for w in ["rent", "lease"]):
+        return TransactionCategory.RENT
+    elif any(w in desc for w in ["aws", "cloud", "gcp", "azure", "github", "saas", "software", "subscription", "hosting"]):
+        return TransactionCategory.SOFTWARE
+    elif any(w in desc for w in ["consulting", "professional", "legal", "audit", "advisor"]):
+        return TransactionCategory.CONSULTING
+    elif any(w in desc for w in ["electric", "water", "internet", "power", "utility", "phone", "telecom"]):
+        return TransactionCategory.UTILITIES
+    elif any(w in desc for w in ["marketing", "ads", "google ads", "meta", "advertising", "campaign"]):
+        return TransactionCategory.MARKETING
+    elif any(w in desc for w in ["tax", "gst", "tds", "vat", "incometax"]):
+        return TransactionCategory.TAX
+    elif any(w in desc for w in ["stationery", "office supplies", "supplies"]):
+        return TransactionCategory.OFFICE_SUPPLIES
+    elif any(w in desc for w in ["travel", "flight", "hotel", "uber", "ola", "cab"]):
+        return TransactionCategory.TRAVEL
+    elif any(w in desc for w in ["internal transfer", "transfer to", "contra", "self transfer"]):
+        return TransactionCategory.INTERNAL_TRANSFER
+    elif amount > 0:
+        return TransactionCategory.REVENUE
+    else:
+        return TransactionCategory.OTHER
+
 @router.post("/{business_id}/imports/{job_id}/confirm", response_model=ImportConfirmResponse)
 def confirm_and_save_import(
     business_id: str,
@@ -288,6 +323,7 @@ def confirm_and_save_import(
 ):
     """
     Step 7 & 8: Explicitly confirm import and store approved records with full provenance.
+    Creates both ImportedRecord and authoritative Transaction ledger entries.
     Requires FINANCE_MANAGER or OWNER role.
     """
     job = (
@@ -320,26 +356,97 @@ def confirm_and_save_import(
             detail="Cannot confirm import: There are no valid records in this job."
         )
 
+    # Resolve target account
+    target_account = None
+    if job.account_id:
+        target_account = (
+            db.query(FinancialAccount)
+            .filter(
+                FinancialAccount.id == job.account_id,
+                FinancialAccount.business_id == business_id
+            )
+            .first()
+        )
+
+    if not target_account:
+        # Auto-resolve primary bank account
+        target_account = (
+            db.query(FinancialAccount)
+            .filter(
+                FinancialAccount.business_id == business_id,
+                FinancialAccount.is_active == True,
+                FinancialAccount.account_type == AccountType.BANK
+            )
+            .first()
+        )
+        if not target_account:
+            target_account = (
+                db.query(FinancialAccount)
+                .filter(
+                    FinancialAccount.business_id == business_id,
+                    FinancialAccount.is_active == True
+                )
+                .first()
+            )
+        if target_account:
+            job.account_id = target_account.id
+
     saved_count = 0
     for vr in valid_results:
         p = vr.parsed_data
         if not p:
             continue
+
+        raw_amt = Decimal(str(p["amount"]))
+        t_date = datetime.fromisoformat(p["transaction_date"]).date()
+        desc = p.get("description", "Imported transaction")
+        ref = p.get("reference_number")
+        curr = p.get("currency", "INR")
+
         rec = ImportedRecord(
             business_id=business_id,
             account_id=job.account_id,
             import_job_id=job.id,
             row_index=vr.row_index,
-            transaction_date=datetime.fromisoformat(p["transaction_date"]).date(),
-            description=p["description"],
-            reference_number=p.get("reference_number"),
+            transaction_date=t_date,
+            description=desc,
+            reference_number=ref,
             debit=p.get("debit"),
             credit=p.get("credit"),
-            amount=p["amount"],
-            currency=p.get("currency", "INR"),
+            amount=raw_amt,
+            currency=curr,
             raw_source_row=vr.raw_data,
         )
         db.add(rec)
+        db.flush()
+
+        # Categorize and create authoritative Transaction ledger entry
+        cat = infer_transaction_category(desc, raw_amt)
+        if cat == TransactionCategory.INTERNAL_TRANSFER:
+            tx_type = TransactionType.INTERNAL_TRANSFER
+            is_transfer = True
+        elif raw_amt > 0:
+            tx_type = TransactionType.INFLOW
+            is_transfer = False
+        else:
+            tx_type = TransactionType.OUTFLOW
+            is_transfer = False
+
+        tx = Transaction(
+            business_id=business_id,
+            account_id=job.account_id,
+            imported_record_id=rec.id,
+            transaction_date=t_date,
+            amount=raw_amt,
+            currency=curr,
+            description=desc,
+            category=cat,
+            transaction_type=tx_type,
+            status=TransactionStatus.POSTED,
+            is_internal_transfer=is_transfer,
+            reference_number=ref,
+        )
+        db.add(tx)
         saved_count += 1
 
     job.status = ImportJobStatus.APPROVED
@@ -348,6 +455,11 @@ def confirm_and_save_import(
     # Mark uploaded file as processed
     if job.uploaded_file:
         job.uploaded_file.status = FileStatus.PROCESSED
+
+    # Recalculate target account balance in the database
+    if target_account:
+        acc_bal = FinancialService.calculate_account_balance(db, target_account.id, business_id)
+        target_account.current_balance = acc_bal["current_balance"]
 
     db.commit()
 
@@ -371,6 +483,7 @@ def confirm_and_save_import(
         imported_count=saved_count,
         message=f"Successfully imported {saved_count} financial transactions."
     )
+
 
 @router.get("/{business_id}/imports", response_model=List[ImportJobOut])
 def list_import_jobs(

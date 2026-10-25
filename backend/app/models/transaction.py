@@ -75,6 +75,7 @@ class Transaction(Base):
     business_id = Column(String(36), ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
     account_id = Column(String(36), ForeignKey("financial_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     imported_record_id = Column(String(36), ForeignKey("imported_records.id", ondelete="SET NULL"), nullable=True, index=True)
+    payment_id = Column(String(36), ForeignKey("payments.id", ondelete="SET NULL"), nullable=True, unique=True, index=True)
     
     transaction_date = Column(Date, nullable=False, index=True)
     amount = Column(Numeric(15, 2), nullable=False)  # Positive for inflow, Negative for outflow
@@ -96,4 +97,5 @@ class Transaction(Base):
     business = relationship("Business", back_populates="transactions")
     account = relationship("FinancialAccount", back_populates="transactions")
     imported_record = relationship("ImportedRecord", back_populates="transaction")
+    payment = relationship("Payment", back_populates="transaction", uselist=False)
     reconciliation = relationship("ReconciliationRecord", back_populates="transaction", uselist=False)

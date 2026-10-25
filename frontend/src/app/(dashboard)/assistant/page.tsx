@@ -41,6 +41,8 @@ export default function AssistantPage() {
     "What is our actual cash balance?",
     "Which invoices are overdue?",
     "What is our 30-day forecast?",
+    "What is our monthly expense breakdown?",
+    "What recent customer payments were recorded?",
     "What is our reserve breach probability?",
     "What actions are recommended to optimize cash flow?",
   ];
@@ -101,11 +103,22 @@ export default function AssistantPage() {
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
-      setError(err.message || "Failed to retrieve grounded assistant response.");
+      const errMsg = err.message || "Failed to retrieve grounded assistant response.";
+      setError(errMsg);
+
+      let displayText = `Assistant query encountered an issue: ${errMsg}`;
+      if (errMsg.includes("Unable to connect") || errMsg.includes("Failed to fetch")) {
+        displayText = "Unable to connect to the cashFlow backend server at http://localhost:8000. Please ensure the backend container or service is running and accessible.";
+      } else if (errMsg.includes("401") || errMsg.includes("authenticated")) {
+        displayText = "Your session has expired. Please sign in again to access financial intelligence.";
+      } else if (errMsg.includes("403") || errMsg.includes("Forbidden") || errMsg.includes("permission")) {
+        displayText = "Access denied. You do not have permission to query financial records for this business workspace.";
+      }
+
       const errorMsg: ChatMessage = {
         id: "e-" + Date.now(),
         sender: "assistant",
-        text: "I encountered an error retrieving grounded financial records. Please ensure your backend is accessible and retry.",
+        text: displayText,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages((prev) => [...prev, errorMsg]);

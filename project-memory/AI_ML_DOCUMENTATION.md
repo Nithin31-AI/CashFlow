@@ -54,15 +54,21 @@ cashFlow differentiates between deterministic domain logic, statistical models, 
 - **Advisory Principle**: Solutions are strictly advisory; automated executions of bank transfers or debt drawdowns are disallowed without explicit human confirmation.
 
 ### 2.3 Grounded Conversational Assistant (`assistant_service.py`)
-- **Architecture**: Tool-Calling Dispatcher interfacing with verified domain services:
-  - `get_actual_cash_balance`: Cleared bank ledger balances.
-  - `get_overdue_invoices`: Unpaid invoices past due date.
-  - `get_forecast_summary`: 30-day deterministic forecast.
-  - `get_simulation_summary`: Latest Monte Carlo run percentiles.
-  - `get_recommendations`: Active explainable recommendations.
-- **Zero-Hallucination Guardrails**:
-  - Numeric figures are strictly sourced from tool payloads.
+- **Architecture**: Tool-Calling Dispatcher interfacing with 10 deterministic domain tools:
+  - `get_actual_cash_balance`: Cleared bank ledger balances and reserve headroom.
+  - `get_overdue_invoices`: Unpaid invoices past due date and delay predictions.
+  - `get_forecast_summary`: Multi-horizon deterministic forecast projections (with dictionary and object-safe attribute access).
+  - `get_simulation_summary`: Latest Monte Carlo run percentiles, breach probability, and expected shortfall.
+  - `get_recommendations`: Active explainable recommendations with financial evidence.
+  - `get_expenses_summary`: Categorized operational expense totals and breakdown.
+  - `get_recorded_payments`: Historical customer payment settlements.
+  - `get_cash_flow_risks`: Sentinel alert rules and active breach events.
+  - `get_scenario_summary`: Custom comparative decision scenarios.
+  - `get_historical_cash_flow`: Aggregated revenue, expenses, and net cash flow.
+- **Zero-Hallucination & Scope Guardrails**:
+  - Numeric figures are strictly sourced from verified tool payloads using exact Decimal mathematics.
   - Explicit evidence citations returned in every response ("Verified Cleared Bank Ledger", "Accounts Receivable Ledger", etc.).
+  - Non-financial, out-of-scope queries (weather, sports, general advice) are safely redirected to financial analysis without fabrication.
   - Explicit assumptions notes appended to responses.
 - **Prompt Injection Defense**:
   - Input query sanitized for system override keywords and injection delimiters.

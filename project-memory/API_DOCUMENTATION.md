@@ -306,7 +306,7 @@ This document describes the actual FastAPI REST endpoints implemented in the app
 
 ---
 
-## 10. Invoices & Payments (`/api/v1/businesses/{business_id}/invoices`)
+## 10. Invoices & Payments (`/api/v1/businesses/{business_id}/invoices` & `/payments`)
 
 ### 10.1 `GET /api/v1/businesses/{business_id}/invoices`
 - **Purpose**: List customer invoices with payment delay prediction indicators.
@@ -320,11 +320,24 @@ This document describes the actual FastAPI REST endpoints implemented in the app
 - **Source**: `backend/app/api/v1/invoices.py`
 - **Test Status**: `VERIFIED`.
 
-### 10.3 `POST /api/v1/businesses/{business_id}/invoices/payments`
-- **Purpose**: Record customer payment and allocate to invoice.
+### 10.3 `PATCH /api/v1/businesses/{business_id}/invoices/{invoice_id}/status`
+- **Purpose**: Update invoice lifecycle status (`DRAFT`, `SENT`, `CANCELLED`, `PAID`).
+- **Enforcement**: Direct transition to `PAID` is strictly prohibited if `unpaid > 0`. Moving to `PAID` requires actual settlement via `POST /payments`.
+- **Request Body**: `{"status": "PAID"}` (`InvoiceStatusUpdate`).
+- **Auth**: `ACCOUNTANT` or higher.
+- **Source**: `backend/app/api/v1/invoices.py`
+- **Test Status**: `VERIFIED` (`tests/test_system_integration_repairs.py`).
+
+### 10.4 `POST /api/v1/businesses/{business_id}/payments`
+- **Purpose**: Record customer payment settlement and synchronize ledger.
+- **Enforcement**:
+  1. Validates `amount > 0` and `amount <= unpaid`.
+  2. Enforces idempotency via `(reference_number, amount)` check against duplicate submissions.
+  3. Reconciles with existing unreconciled bank transaction if matched, avoiding duplicate cash inflows. Otherwise, creates exactly one authoritative `Transaction` ledger entry linked via `payment_id`.
+  4. Automatically recalculates deposit account `current_balance` and transitions invoice status (`PARTIALLY_PAID` or `PAID`).
 - **Auth**: `FINANCE_MANAGER` or `OWNER`.
 - **Source**: `backend/app/api/v1/invoices.py`
-- **Test Status**: `VERIFIED` (`tests/test_reconciliation.py`).
+- **Test Status**: `VERIFIED` (`tests/test_system_integration_repairs.py`).
 
 ---
 
@@ -460,13 +473,26 @@ This document describes the actual FastAPI REST endpoints implemented in the app
 ## 16. Conversational AI Financial Assistant (`/api/v1/businesses/{business_id}/assistant`)
 
 ### 16.1 `POST /api/v1/businesses/{business_id}/assistant/query`
-- **Purpose**: Ask natural language financial questions answered via verified backend tools with citations and zero hallucination.
+- **Purpose**: Ask natural language financial questions answered via 10 verified deterministic backend tools with strict grounded citations and zero hallucination.
+- **Request Body**: `{"query": "What is our 30-day forecast and cash runway?"}`
+- **Response**: `200 OK` -> `AssistantResponse` (`query`, `answer`, `citations`, `tool_data`, `assumptions_note`).
 - **Auth**: `VIEWER` or higher.
-- **Source**: `backend/app/api/v1/assistant.py`
-- **Test Status**: `VERIFIED` (`tests/test_alerts_and_assistant.py`).
+- **Source**: `backend/app/api/v1/assistant.py`, `backend/app/services/assistant_service.py`
+- **Test Status**: `VERIFIED` (`tests/test_alerts_and_assistant.py`, `tests/test_system_integration_repairs.py`).
 
 ### 16.2 `GET /api/v1/businesses/{business_id}/assistant/tools`
 - **Purpose**: Introspect verified financial tools available to the assistant.
+- **Available Tools**:
+  1. `get_actual_cash_balance`: Cleared liquid bank balances and reserve headroom.
+  2. `get_overdue_invoices`: Unpaid receivables and predicted collection delays.
+  3. `get_forecast_summary`: Multi-horizon deterministic forecast projections.
+  4. `get_simulation_summary`: Monte Carlo stochastic risk metrics and breach probabilities.
+  5. `get_recommendations`: Active constrained prescriptive actions and impact.
+  6. `get_expenses_summary`: Category-wise expense breakdown from posted outflows.
+  7. `get_recorded_payments`: Historical customer payment settlements.
+  8. `get_cash_flow_risks`: Sentinel alert rules and active breach events.
+  9. `get_scenario_summary`: Custom comparative decision scenarios.
+  10. `get_historical_cash_flow`: Aggregated revenue, expenses, and net cash flow.
 - **Auth**: `VIEWER` or higher.
 - **Source**: `backend/app/api/v1/assistant.py`
 - **Test Status**: `VERIFIED`.

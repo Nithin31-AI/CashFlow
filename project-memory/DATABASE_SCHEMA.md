@@ -5,7 +5,7 @@
 The database is built using SQLAlchemy 2.0 ORM with schema migrations managed by Alembic. Every tenant-owned entity carries an indexed `business_id` foreign key referencing `businesses.id`, enforcing multi-tenant isolation across all queries.
 
 - **Dialects Supported**: PostgreSQL 16+ (Production/Docker), SQLite 3 (Local Development & In-Memory Testing).
-- **Migration Head Revision**: `a1b2c3d4e5f6` (`a1b2c3d4e5f6_stage2_financial_engine.py`).
+- **Migration Head Revision**: `c3d4e5f6a7b8` (`c3d4e5f6a7b8_link_payments_and_transactions.py`).
 
 ---
 
@@ -67,6 +67,7 @@ The definitive double-entry and classified financial transaction ledger.
 - `id`: `VARCHAR(36)` — Primary Key.
 - `business_id`: `VARCHAR(36)` — Foreign Key -> `businesses.id` (ON DELETE CASCADE), Indexed, Not Null.
 - `account_id`: `VARCHAR(36)` — Foreign Key -> `financial_accounts.id` (ON DELETE SET NULL), Indexed, Nullable.
+- `payment_id`: `VARCHAR(36)` — Foreign Key -> `payments.id` (ON DELETE SET NULL), Unique, Indexed, Nullable (Migration `c3d4e5f6a7b8`). Links customer invoice settlement to authoritative cash inflow.
 - `imported_record_id`: `VARCHAR(36)` — Foreign Key -> `imported_records.id` (ON DELETE SET NULL), Indexed, Nullable.
 - `transaction_date`: `DATE` — Indexed, Not Null.
 - `amount`: `NUMERIC(15, 2)` — Not Null (positive = inflow, negative = outflow).

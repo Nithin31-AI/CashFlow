@@ -55,8 +55,22 @@ This document defines the prioritized continuation roadmap for developers and AI
   - Adapted excerpt to cashFlow multi-tenant schema in `backend/app/db/seeds/acme_synthetic_dataset.sql`.
   - Automated seeding and analytical processing script in `backend/app/scripts/seed_acme_synthetic_data.py`.
   - Seeded both PostgreSQL 16 (Docker) and SQLite (`cashflow.db`).
-  - Generated 7d/30d/90d cash forecasts, Monte Carlo simulations (P50 ₹2.88M, 0.1% breach probability), and constrained decision optimization plans.
-  - Verified API endpoints via `backend/app/scripts/verify_acme_api.py`.
+- [x] **Critical System-Wide Bug Investigation & Integration Repairs**:
+  - **BUG 1 Fixed & Verified**: Added Alembic migration `c3d4e5f6a7b8` linking payments and transactions; statement import confirmation generates authoritative `Transaction` ledger records with rule-based categorization, links `imported_record_id`, and immediately updates account balance; updated `ForecastingService` and `SimulationService` to account for both `Transaction` and unlinked `ImportedRecord` outflows.
+  - **BUG 2 Fixed & Verified**: Invoice payment creation creates exactly one `Transaction` linked by `payment_id`, prevents double cash counting by linking matching unreconciled bank transactions, validates `amount > 0` and `amount <= unpaid`, enforces idempotency, updates deposit account balance; added `PATCH /invoices/{id}/status` blocking direct transition to `PAID` without payment; updated frontend invoice payment modal with account selection and remaining balance helper.
+  - **BUG 3 Fixed & Verified**: Fixed `AttributeError: 'dict' object has no attribute 'horizon_days'` by implementing dual dict/object safe attribute access in `AssistantService`; implemented 5 missing grounded tools (`get_expenses_summary`, `get_recorded_payments`, `get_cash_flow_risks`, `get_scenario_summary`, `get_historical_cash_flow`); expanded query routing with out-of-scope non-financial guardrails; updated frontend assistant error handler to diagnostically display backend errors instead of generic disconnect notices.
+  - **Automated Regression Suite**: Authored `backend/tests/test_system_integration_repairs.py` (4/4 passing), elevating total test count to **39 PASSED, 0 FAILED** (100% pass rate).
+
+---
+
+## C. Recommended Next Priorities (Post-Bug Fixes)
+1. **Live Staging Deployment & Domain Provisioning**:
+   - Deploy Docker Compose or Kubernetes manifests to staging server with automated SSL provisioning (Let's Encrypt / Caddy reverse proxy).
+2. **Automated End-to-End Browser Playwright/Cypress Suite**:
+   - Run end-to-end browser tests in CI/CD pipeline simulating CSV file upload, invoice creation, payment recording, and AI assistant questioning.
+3. **Plaid / Banking Open Banking Connector**:
+   - Implement live bank feed aggregation for real-time automated statement syncing.
+
 
 ---
 

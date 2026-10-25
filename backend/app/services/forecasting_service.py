@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.models.business import Business
-from app.models.transaction import Transaction, TransactionType, TransactionCategory
+from app.models.transaction import Transaction, ImportedRecord, TransactionType, TransactionCategory
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.forecast import ForecastRun
 from app.services.financial_service import FinancialService
@@ -45,7 +45,18 @@ class ForecastingService:
         ).all()
 
         total_recent_outflow = sum([abs(Decimal(str(t.amount))) for t in recent_outflows])
+        existing_tx_imp_ids = {t.imported_record_id for t in recent_outflows if t.imported_record_id}
+        recent_imp_outflows = db.query(ImportedRecord).filter(
+            ImportedRecord.business_id == business_id,
+            ImportedRecord.transaction_date >= ninety_days_ago,
+            ImportedRecord.amount < 0
+        ).all()
+        for imp in recent_imp_outflows:
+            if imp.id not in existing_tx_imp_ids:
+                total_recent_outflow += abs(Decimal(str(imp.amount)))
+
         daily_baseline_burn = (total_recent_outflow / Decimal("90.0")).quantize(Decimal("0.01")) if total_recent_outflow > 0 else Decimal("1500.00")
+
 
         # Inflow schedule: Invoices due in the forecast horizon
         horizon_end_date = today + timedelta(days=horizon_days)

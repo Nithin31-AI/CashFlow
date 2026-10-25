@@ -4,7 +4,34 @@ This document maintains a chronological development history of the **cashFlow** 
 
 ---
 
-## [2026-10-25] — Bug Fix: Decisions Screen Client-Side Crash Resolution & Response Model Alignment
+## [2026-10-25] — Critical System-Wide Bug Repairs: Statement Ingestion, Invoice Settlement, and AI Multi-Tool Engine
+
+### Objective
+Resolve three critical system-wide integration defects:
+1. Ingested bank statements not being reflected in authoritative transaction ledgers, account balances, forecasts, and risk models (BUG 1).
+2. Invoice payment settlement not updating transaction history or cash position, allowing arbitrary status changes to PAID without payment (BUG 2).
+3. AI Assistant crashing due to dictionary attribute access and displaying false "backend not connected" error messages (BUG 3).
+
+### Key Changes
+- **BUG 1: Ingestion to Transaction Ledger & Downstream Analysis**:
+  - Authored Alembic migration `c3d4e5f6a7b8` adding `payment_id` with unique index `ix_transactions_payment_id` to `transactions`. Applied cleanly to PostgreSQL.
+  - Updated `backend/app/api/v1/imports.py` `confirm_and_save_import` to generate authoritative `Transaction` ledger records from validated rows with rule-based transaction category classification (`PAYROLL`, `RENT`, `SOFTWARE`, `CONSULTING`, `UTILITIES`, etc.) and link `imported_record_id`.
+  - Recalculates target `financial_account.current_balance` immediately upon import confirmation.
+  - Updated `ForecastingService.generate_forecast` and `SimulationService.run_monte_carlo` to incorporate both `Transaction` rows and unlinked `ImportedRecord` activity into burn rate and daily projections.
+- **BUG 2: Invoice Payment & Transaction Synchronization**:
+  - Updated `backend/app/api/v1/invoices.py` `record_payment`: validates `amount > 0` and `amount <= unpaid`, checks idempotency on `(reference_number, amount)`, links matching unreconciled bank transactions to avoid double cash counting, generates exactly one `Transaction` linked via `payment_id`, updates invoice `amount_paid` and status, and recalculates account balance.
+  - Implemented `PATCH /invoices/{id}/status` with `InvoiceStatusUpdate` schema, preventing arbitrary direct transitions to `PAID` without full settlement.
+  - Updated frontend `frontend/src/app/(dashboard)/invoices/page.tsx` payment modal with deposit bank account selector, remaining balance helper, and client-side amount validation.
+- **BUG 3: AI Assistant Grounded Tools & Diagnostic Error Handling**:
+  - Fixed dictionary attribute access in `backend/app/services/assistant_service.py` (`fc["horizon_days"] if isinstance(fc, dict) else fc.horizon_days`) and safe enum value extraction.
+  - Implemented 5 missing grounded tools: `get_expenses_summary`, `get_recorded_payments`, `get_cash_flow_risks`, `get_scenario_summary`, `get_historical_cash_flow` (expanding suite to 10 verified tools).
+  - Extended query routing in `answer_query` and added out-of-scope non-financial intent guardrails.
+  - Updated `frontend/src/app/(dashboard)/assistant/page.tsx` error handler to diagnostically report 401, 403, and actual error messages instead of generic "backend not accessible" message.
+- **Testing & Verification**:
+  - Authored `backend/tests/test_system_integration_repairs.py` covering all three functional areas; 4/4 passed.
+  - Full backend test suite executed: **39 PASSED, 0 FAILED** (100% pass rate).
+  - Next.js production build (`npm run build`) completed with **0 errors** across all 23 routes.
+
 
 ### Objective
 Resolve client-side crash `TypeError: Cannot read properties of undefined (reading 'toFixed')` on the Decisions screen (`/decisions`), harden frontend formatting, and establish strict Pydantic response models for scenario and decision intelligence endpoints.

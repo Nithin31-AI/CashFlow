@@ -89,6 +89,7 @@ class Payment(Base):
     business = relationship("Business", back_populates="payments")
     account = relationship("FinancialAccount", back_populates="payments")
     allocations = relationship("InvoicePaymentAllocation", back_populates="payment", cascade="all, delete-orphan")
+    transaction = relationship("Transaction", back_populates="payment", uselist=False)
 
 
 class InvoicePaymentAllocation(Base):
