@@ -240,3 +240,31 @@ Implement Stage 4: Google authentication with server-side ID token validation an
 - **TypeScript Type Validation**: **`npx tsc --noEmit` exited with code 0 (zero errors)** across all Next.js routes.
 - **Frontend Production Build**: **`npm run build` compiled all 23 static and dynamic routes with code 0**.
 - **Runtime Verification**: Interactive browser subagent recorded session (`stage4_auth_and_ui_verification_1792878142330.webp`) verifying login page, register page, password visibility toggles, Google button, and stage text removal across dashboard and decisions pages.
+
+---
+
+## [2026-10-25] — Docker Compose Startup Fix: Google Auth Requests & Runtime Dependencies
+
+### Objective
+Diagnose and permanently resolve container startup failure (`ModuleNotFoundError: No module named 'requests'`) in `cashflow_backend` container caused by Google Auth transport imports, clean obsolete `version` tag in `docker-compose.yml`, and verify complete application stack orchestration.
+
+### Files Modified
+- `backend/requirements.txt`:
+  - Added `requests>=2.31.0` required by `google.auth.transport.requests`.
+  - Added `email-validator>=2.0.0` required by Pydantic `EmailStr`.
+  - Pinned `bcrypt>=4.0.0,<4.1.0` to eliminate Passlib 72-byte wrap-bug exceptions.
+- `backend/Dockerfile`:
+  - Refactored multi-stage build from `--user` / `/root/.local` copy to standard `/opt/venv` virtual environment pattern.
+  - Eliminated hardcoded `PYTHONPATH` hacks.
+- `docker-compose.yml`:
+  - Removed obsolete top-level `version: '3.8'` attribute.
+
+### Empirical Runtime Verification
+- Rebuilt backend image with `--no-cache`.
+- Successfully started all services via `docker compose up -d`.
+- Verified `docker compose ps`: `cashflow_postgres` (healthy), `cashflow_backend` (healthy), `cashflow_frontend` (healthy).
+- Verified health endpoint: `GET /api/v1/health` returned HTTP 200 `{"status":"healthy","app":"cashFlow","tagline":"PLAN • FORECAST • GROW","environment":"production"}`.
+- Verified Google configuration: `GET /api/v1/auth/google/config` returned HTTP 200 `{"client_id":"","enabled":false}`.
+- Verified user registration: `POST /api/v1/auth/register` returned HTTP 201 Created with persisted record in PostgreSQL.
+- Verified user login: `POST /api/v1/auth/login` returned HTTP 200 OK with valid JWT bearer token.
+- Verified host test suite: 30 passed out of 30 tests in 19.50s.

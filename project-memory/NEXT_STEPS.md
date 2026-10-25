@@ -27,11 +27,12 @@ This document defines the prioritized continuation roadmap for developers and AI
 - [x] **Official Tagline & Customer UI Cleanup**:
   - Replaced stage promotional text on login and sign-up pages with official tagline: *"Turn financial data into confident business decisions."*
   - Removed all user-facing references to "Stage 1", "Stage 2", "Stage 3", "Stage 4" from landing page, dashboard, and decisions pages.
-- [x] **Production Dockerization**:
-  - `backend/Dockerfile`: Multi-stage build with unprivileged `appuser` (non-root), `libpq-dev`, `curl` healthcheck, and `psycopg2-binary` support.
+- [x] **Production Dockerization & Container Startup Verification**:
+  - `backend/Dockerfile`: Multi-stage build with standard `/opt/venv` virtual environment, unprivileged `appuser` (non-root, UID 1000), `libpq-dev`, `curl` healthcheck, `requests`, `google-auth`, `email-validator`, and `psycopg2-binary`.
   - `frontend/Dockerfile`: Multi-stage build with unprivileged `nextjs` user (non-root), production optimization, and container healthcheck.
-  - `docker-compose.yml`: PostgreSQL 16 Alpine, unexposed db port to host, healthcheck dependencies, service-to-service networking, named persistent volumes (`postgres_data`, `backend_uploads`).
+  - `docker-compose.yml`: PostgreSQL 16 Alpine, unexposed db port to host, healthcheck dependencies, service-to-service networking, named persistent volumes (`postgres_data`, `backend_uploads`), clean modern schema without obsolete top-level `version`.
   - `.dockerignore` for both frontend and backend excluding `.env`, `.git`, caches, and uploads.
+  - Verified live runtime orchestration: `cashflow_postgres`, `cashflow_backend`, and `cashflow_frontend` running healthy simultaneously.
 - [x] **Production Security Validation**:
   - Zero hardcoded secrets; documented `.env.example`.
   - Cleaned repository index by untracking compiled `.pyc` and local `.db` files; created root `.gitignore`.

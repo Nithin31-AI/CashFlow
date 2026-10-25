@@ -66,3 +66,8 @@
 4. **Mock Google Token Email Extraction**:
    - *Problem*: String split on `_` extracted token segment rather than email address.
    - *Fix*: Replaced token splitting with prefix slicing and substring extraction.
+5. **Docker Compose Missing Requests Dependency & Container Startup**:
+   - *Problem*: Container `cashflow_backend` crashed on startup with `ModuleNotFoundError: No module named 'requests'` originating from `from google.auth.transport import requests as google_requests` in `app/services/google_auth.py`, causing `dependency failed to start: container cashflow_backend is unhealthy`.
+   - *Root Cause*: `google-auth` requires `requests` as an optional transport dependency which was missing from `backend/requirements.txt`. Additionally, Pydantic's `EmailStr` required `email-validator`, and `bcrypt 5.0.0` caused a `ValueError` in `passlib` wrap-bug detection.
+   - *Fix*: Added `requests>=2.31.0` and `email-validator>=2.0.0` to `backend/requirements.txt`; pinned `bcrypt>=4.0.0,<4.1.0`; refactored `backend/Dockerfile` to standard `/opt/venv` multi-stage build; removed obsolete `version: '3.8'` attribute from `docker-compose.yml`.
+   - *Verification*: Rebuilt backend container without cache (`docker compose build --no-cache backend`); executed `docker compose up -d`; verified all 3 containers healthy (`cashflow_postgres`, `cashflow_backend`, `cashflow_frontend`); verified endpoints `GET /api/v1/health` (200 OK), `GET /api/v1/auth/google/config` (200 OK), `POST /api/v1/auth/register` (201 Created), `POST /api/v1/auth/login` (200 OK with JWT token), and `POST /api/v1/auth/google` (400 validation). Re-ran host automated test suite (30 passed out of 30 tests in 19.50s).
