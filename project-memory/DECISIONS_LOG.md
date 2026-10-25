@@ -214,3 +214,38 @@ This document records significant architectural, technical, and design decisions
 - **Reason**: Ensures realistic, end-to-end analytical data across all dashboard modules without compromising financial correctness or tenant isolation.
 - **Affected Files**: `backend/app/db/seeds/acme_synthetic_dataset.sql`, `backend/app/scripts/seed_acme_synthetic_data.py`, `backend/app/scripts/verify_acme_api.py`.
 
+---
+
+### DEC-018: PostgreSQL Database Connectivity with SSL, Connection Pooling, and Dynamic Dialect Health Check
+- **Date**: 2026-10-25
+- **Status**: `ACTIVE`
+- **Context**: cashFlow requires production-grade PostgreSQL database integration driven by `DATABASE_URL` loaded securely via environment variables and Docker Compose, supporting TLS/SSL encryption and connection pooling.
+- **Problem**: Default connection handling lacked protocol normalization for `postgresql+psycopg2://`, lacked TLS/SSL support (`sslmode=require`), leaked database credentials in logs, lacked connection pooling settings for serverless PostgreSQL, and failed in SQLite test environments when running PostgreSQL-specific queries (`SELECT NOW()`).
+- **Chosen Approach**:
+  1. Configured `Settings` with strict non-empty `DATABASE_URL` validation and masked URL logging (`render_as_string(hide_password=True)`).
+  2. Implemented `normalize_database_url` translating legacy `postgres://` and generic `postgresql://` URIs to SQLAlchemy-compliant `postgresql+psycopg2://`.
+  3. Added connection pooling (`pool_size=10`, `pool_recycle=300`, `pool_pre_ping=True`) with SSL connection arguments (`sslmode=require`).
+  4. Implemented `check_database_health()` inspecting dialect dynamically: executing `SELECT NOW();` for PostgreSQL and `SELECT 1;` for SQLite.
+  5. Configured Docker Compose `backend` service with `env_file: - ./backend/.env` without copying secrets into build contexts, and added root `.dockerignore`.
+  6. Added comprehensive automated tests in `backend/tests/test_database_connection.py` achieving 35/35 passing tests.
+- **Reason**: Ensures reliable, enterprise-ready PostgreSQL operations across cloud-hosted databases (e.g. Neon) and Docker environments while preserving secrets security and testing flexibility.
+- **Affected Files**: `backend/app/core/config.py`, `backend/app/db/session.py`, `backend/app/main.py`, `backend/alembic/env.py`, `docker-compose.yml`, `.dockerignore`, `backend/tests/test_database_connection.py`.
+
+---
+
+### DEC-019: Decisions Screen Schema Alignment and Defensive Number Formatting
+- **Date**: 2026-10-25
+- **Status**: `ACTIVE`
+- **Context**: The Next.js frontend crashed with `TypeError: Cannot read properties of undefined (reading 'toFixed')` when navigating to the Decisions screen (`/decisions`).
+- **Problem**:
+  1. In `frontend/src/app/(dashboard)/decisions/page.tsx:382`, `{sc.shortage_risk_percent.toFixed(1)}%` assumed `sc.shortage_risk_percent` was always a finite number.
+  2. `SavedScenario` parameter property names differed between backend (`collection_rate_pct`, `expense_multiplier`) and frontend expectation (`collection_rate_percent`, `expense_growth_multiplier`).
+  3. Backend `backend/app/api/v1/decisions.py` lacked explicit Pydantic `response_model` annotations, and when creating a baseline scenario on-the-fly, attributes were expired on `db.commit()` without `db.refresh()`.
+- **Chosen Approach**:
+  1. Updated `frontend/src/lib/utils.ts` `formatCurrency` to defensively accept and parse strings, numbers, nulls, and undefined values with fallback to `0.00`.
+  2. Updated `frontend/src/app/(dashboard)/decisions/page.tsx` with finite number guards: `Number.isFinite(Number(sc.shortage_risk_percent)) ? ... : "0.0%"`, `Number.isFinite(Number(sc.runway_days)) ? ... : "N/A"`, and parameter key aliases.
+  3. Added explicit Pydantic response models (`GoalOut`, `ScenarioOut`, `OptimisationPlanOut`, `RecommendationOut` with `from_attributes = True`) in `backend/app/api/v1/decisions.py` and added `db.refresh(baseline)` to prevent expired attribute serialization.
+  4. Extended `DecisionService.evaluate_scenario` parameters dictionary to store both alias variants (`collection_rate_pct` & `collection_rate_percent`, `expense_multiplier` & `expense_growth_multiplier`).
+- **Reason**: Eliminates all client-side runtime crashes, establishes strict API response contracts, and guarantees graceful degradation for incomplete or zero-state scenario records.
+- **Affected Files**: `frontend/src/app/(dashboard)/decisions/page.tsx`, `frontend/src/lib/utils.ts`, `backend/app/api/v1/decisions.py`, `backend/app/services/decision_service.py`.
+

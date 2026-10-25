@@ -4,7 +4,50 @@ This document maintains a chronological development history of the **cashFlow** 
 
 ---
 
-## [2026-10-25] — Synthetic Benchmark Dataset: Acme Consulting Tech Ltd Ingestion & Analytics
+## [2026-10-25] — Bug Fix: Decisions Screen Client-Side Crash Resolution & Response Model Alignment
+
+### Objective
+Resolve client-side crash `TypeError: Cannot read properties of undefined (reading 'toFixed')` on the Decisions screen (`/decisions`), harden frontend formatting, and establish strict Pydantic response models for scenario and decision intelligence endpoints.
+
+### Key Changes
+- **Frontend Safeguards (`frontend/src/app/(dashboard)/decisions/page.tsx`, `frontend/src/lib/utils.ts`)**:
+  - Implemented finite numeric check: `Number.isFinite(Number(sc.shortage_risk_percent)) ? ... : "0.0%"` and runway check: `Number.isFinite(Number(sc.runway_days)) ? ... : "N/A"`.
+  - Added parameter alias fallbacks supporting both `collection_rate_percent` / `collection_rate_pct` and `expense_growth_multiplier` / `expense_multiplier`.
+  - Hardened `formatCurrency` in `frontend/src/lib/utils.ts` to defensively parse numbers, strings, nulls, and undefined values with fallback to `0.00`.
+- **Backend API & Service Alignment (`backend/app/api/v1/decisions.py`, `backend/app/services/decision_service.py`)**:
+  - Added Pydantic schemas: `GoalOut`, `ScenarioOut`, `OptimisationPlanOut`, `RecommendationOut` with `from_attributes = True`.
+  - Decorated all decision endpoints with explicit `response_model` annotations.
+  - Added `db.refresh(baseline)` in `list_scenarios` to prevent SQLAlchemy attribute expiration on commit.
+  - Extended `DecisionService.evaluate_scenario` parameters dictionary to include both alias variants.
+- **Verification**:
+  - `npm run build` executed cleanly across all 23 Next.js routes.
+  - Full backend pytest suite passed: 35/35 tests passing.
+
+---
+
+## [2026-10-25] — PostgreSQL Database Connectivity, TLS/SSL Integration & Health Check Endpoints
+
+### Objective
+Integrate production-grade PostgreSQL connectivity into cashFlow driven by `DATABASE_URL` loaded securely via environment variables and Docker Compose, supporting TLS/SSL encryption, connection pooling, and startup database health checks.
+
+### Key Changes
+- **Environment & Secrets**:
+  - Configured `backend/.env` with actual Neon PostgreSQL connection string and untracked it from git tracking via `git rm --cached backend/.env`.
+  - Updated root and backend `.env.example` with standard PostgreSQL example placeholder format (`DATABASE_URL=postgresql://username:password@hostname/database?sslmode=require`).
+  - Added root `.dockerignore` excluding `.env`, `.git`, caches, and uploads.
+- **Backend Core & Database Engine**:
+  - Enforced non-empty `DATABASE_URL` validation in `backend/app/core/config.py`.
+  - Added `normalize_database_url` translating `postgres://` and `postgresql://` URIs to SQLAlchemy `postgresql+psycopg2://`.
+  - Configured connection pooling (`pool_size=10`, `pool_recycle=300`, `pool_pre_ping=True`) with SSL connection arguments (`sslmode=require`).
+  - Added `check_database_health()` dynamically inspecting dialect: `SELECT NOW();` for PostgreSQL and `SELECT 1;` for SQLite.
+  - Implemented `/health` and `/api/v1/health` endpoints returning database connectivity status and engine name.
+  - Added engine cleanup with `dispose_engine()` on application shutdown.
+- **Docker Compose**:
+  - Added `env_file: - ./backend/.env` to `backend` service and removed hardcoded fallback that masked environment variables.
+- **Testing**:
+  - Authored `backend/tests/test_database_connection.py` covering health endpoints, dialect execution, URL normalization, and empty URL validation error.
+  - Reached 35/35 passing tests in 71.08s.
+
 
 ### Objective
 Ingest, adapt, and connect user-provided synthetic PostgreSQL test dataset for "Acme Consulting Tech Ltd" into the cashFlow multi-tenant platform, bridging opening balances to target operational balances, establishing team access, and executing downstream financial intelligence pipelines (multi-horizon forecasts, Monte Carlo simulations, constrained optimization solver, sentinel risk alerts).

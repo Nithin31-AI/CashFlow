@@ -5,7 +5,7 @@
 - **Backend Test Framework**: `pytest` 9.1.1, `pytest-asyncio` 1.4.0, `httpx` 0.28.1 (FastAPI TestClient).
 - **Execution Date**: 2026-10-25
 - **Execution Command**: `python -m pytest tests -v` (inside `backend/`)
-- **Backend Result**: **30 PASSED, 0 FAILED** (100% pass rate in 20.32s).
+- **Backend Result**: **35 PASSED, 0 FAILED** (100% pass rate in 71.08s).
 - **Frontend Type Validation**: `npx tsc --noEmit` (inside `frontend/`)
 - **Frontend Result**: **0 ERRORS, 0 WARNINGS** (Exited with code 0 across all Next.js routes).
 - **Frontend Production Build**: `npm run build` (inside `frontend/`) — **0 ERRORS**, all 23 routes built successfully.
@@ -19,6 +19,11 @@
 
 | Test File & Case | Category | Result | Execution Time | Coverage & Assertions |
 | :--- | :--- | :--- | :--- | :--- |
+| `tests/test_database_connection.py::test_health_check_endpoint` | Database / Health | `PASSED` | ~0.5s | Verifies `/api/v1/health` returns status "healthy", database status "connected", and database engine name. |
+| `tests/test_database_connection.py::test_root_health_check_endpoint` | Database / Health | `PASSED` | ~0.4s | Verifies root `/health` endpoint responds with 200 OK and database connectivity confirmation. |
+| `tests/test_database_connection.py::test_database_health_check_function` | Database / Health | `PASSED` | ~0.4s | Directly executes `check_database_health()` verifying dynamic dialect detection (`SELECT NOW();` on Postgres, `SELECT 1;` on SQLite). |
+| `tests/test_database_connection.py::test_normalize_database_url` | Database / Driver | `PASSED` | ~0.2s | Verifies translation of `postgres://` and `postgresql://` URIs to SQLAlchemy-compliant `postgresql+psycopg2://`. |
+| `tests/test_database_connection.py::test_database_url_validation_error_on_empty` | Database / Security | `PASSED` | ~0.2s | Enforces strict validation that empty or whitespace `DATABASE_URL` raises descriptive `ValueError`. |
 | `backend/app/scripts/verify_acme_api.py` | Benchmark / E2E API | `PASSED` | ~1.5s | Verifies end-to-end integration of Acme Consulting Tech Ltd across live PostgreSQL Docker container: auth login (Alice Owner), financial overview (₹2.045M liquid cash, ₹845k HDFC, ₹1.2M ICICI), invoices (INV-2026-101 overdue), alerts (buffer breach), 30d forecast (P50 ₹2.88M), and grounded assistant querying. |
 | `tests/test_auth.py::test_google_config_endpoint` | Auth / Google | `PASSED` | ~0.5s | Verifies public Google configuration endpoint (`GET /api/v1/auth/google/config`) returns `client_id` and `enabled` boolean. |
 | `tests/test_auth.py::test_google_auth_new_user_and_auto_workspace` | Auth / Google | `PASSED` | ~0.9s | Verifies registration via Google token, verifies email verification claims, automatically creates business workspace and assigns user as OWNER, confirms access token. |
@@ -72,3 +77,12 @@
    - *Root Cause*: `google-auth` requires `requests` as an optional transport dependency which was missing from `backend/requirements.txt`. Additionally, Pydantic's `EmailStr` required `email-validator`, and `bcrypt 5.0.0` caused a `ValueError` in `passlib` wrap-bug detection.
    - *Fix*: Added `requests>=2.31.0` and `email-validator>=2.0.0` to `backend/requirements.txt`; pinned `bcrypt>=4.0.0,<4.1.0`; refactored `backend/Dockerfile` to standard `/opt/venv` multi-stage build; removed obsolete `version: '3.8'` attribute from `docker-compose.yml`.
    - *Verification*: Rebuilt backend container without cache (`docker compose build --no-cache backend`); executed `docker compose up -d`; verified all 3 containers healthy (`cashflow_postgres`, `cashflow_backend`, `cashflow_frontend`); verified endpoints `GET /api/v1/health` (200 OK), `GET /api/v1/auth/google/config` (200 OK), `POST /api/v1/auth/register` (201 Created), `POST /api/v1/auth/login` (200 OK with JWT token), and `POST /api/v1/auth/google` (400 validation). Re-ran host automated test suite (30 passed out of 30 tests in 19.50s).
+6. **Decisions Screen TypeError: Cannot read properties of undefined (reading 'toFixed')**:
+   - *Problem*: Navigating to `/decisions` crashed with `TypeError: Cannot read properties of undefined (reading 'toFixed')` at line 382 (`sc.shortage_risk_percent.toFixed(1)`).
+   - *Root Cause*: Backend `list_scenarios` expired scenario attributes upon creating a baseline scenario without calling `db.refresh()`, and lacked Pydantic response models, causing missing or undefined numeric properties on serialized scenario objects. Additionally, parameter naming differed (`collection_rate_pct` vs `collection_rate_percent`).
+   - *Fix*:
+     1. Updated `frontend/src/app/(dashboard)/decisions/page.tsx` with finite number checks: `Number.isFinite(Number(sc.shortage_risk_percent)) ? ... : "0.0%"` and `runway_days` checks.
+     2. Updated `frontend/src/lib/utils.ts` `formatCurrency` to defensively parse string numbers, nulls, and undefined values.
+     3. Added Pydantic response models (`GoalOut`, `ScenarioOut`, `OptimisationPlanOut`, `RecommendationOut` with `from_attributes = True`) and `db.refresh(baseline)` in `backend/app/api/v1/decisions.py`.
+     4. Supported both parameter alias conventions in `DecisionService.evaluate_scenario`.
+   - *Verification*: `npm run build` completed with 0 errors across all 23 Next.js routes. Backend test suite passed 35/35 tests in 71.08s.

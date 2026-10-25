@@ -38,10 +38,19 @@ This document defines the prioritized continuation roadmap for developers and AI
   - Cleaned repository index by untracking compiled `.pyc` and local `.db` files; created root `.gitignore`.
   - Tenant isolation verified on all queries; password hashing via Bcrypt; tokenized timing-safe password recovery.
 - [x] **Full Automated & Runtime Testing**:
-  - Pytest: **30 passed out of 30 tests in 20.32s**.
+  - Pytest: **35 passed out of 35 tests in 71.08s**.
   - TypeScript: `npx tsc --noEmit` exited with **code 0 (zero errors)**.
   - Production Build: `npm run build` compiled all 23 routes with **code 0**.
   - Browser subagent verified login, register, password visibility, tagline, and dashboard.
+- [x] **PostgreSQL Database Connectivity & Health Monitoring**:
+  - Normalized `DATABASE_URL` parsing (`postgresql+psycopg2://`) with TLS/SSL encryption (`sslmode=require`).
+  - Implemented dynamic database health checks (`SELECT NOW();` / `SELECT 1;`) exposed at `/health` and `/api/v1/health`.
+  - Configured Docker Compose `env_file: - ./backend/.env` without leaking credentials.
+  - Added unit and integration tests in `backend/tests/test_database_connection.py`.
+- [x] **Decisions Screen Client-Side Resilience & Schema Contract**:
+  - Eliminated `TypeError: Cannot read properties of undefined (reading 'toFixed')` at `/decisions`.
+  - Added finite numeric checks and currency formatting guards for null/undefined/string values.
+  - Added explicit Pydantic response models (`GoalOut`, `ScenarioOut`, `OptimisationPlanOut`, `RecommendationOut`) and fixed baseline attribute expiration.
 - [x] **Synthetic Benchmark Dataset (Acme Consulting Tech Ltd)**:
   - Adapted excerpt to cashFlow multi-tenant schema in `backend/app/db/seeds/acme_synthetic_dataset.sql`.
   - Automated seeding and analytical processing script in `backend/app/scripts/seed_acme_synthetic_data.py`.
