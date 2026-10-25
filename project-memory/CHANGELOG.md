@@ -268,3 +268,24 @@ Diagnose and permanently resolve container startup failure (`ModuleNotFoundError
 - Verified user registration: `POST /api/v1/auth/register` returned HTTP 201 Created with persisted record in PostgreSQL.
 - Verified user login: `POST /api/v1/auth/login` returned HTTP 200 OK with valid JWT bearer token.
 - Verified host test suite: 30 passed out of 30 tests in 19.50s.
+
+---
+
+## [2026-10-25] — Comprehensive README Documentation & Platform Guide
+
+### Objective
+Update the root `README.md` to accurately and comprehensively reflect the complete production-grade system across all 4 stages (Multi-Tenancy & Ingestion, Financial Engine & Forecasting, Advanced AI Simulations & Autonomous Solver, Production Readiness & Dockerization).
+
+### Files Modified
+- `README.md`:
+  - Expanded product overview and official product identity (`cashFlow`, `PLAN • FORECAST • GROW`).
+  - Added feature badges (30/30 tests passing, Python 3.12, FastAPI, Next.js 15, PostgreSQL 16, Docker Compose, TypeScript).
+  - Documented end-to-end capabilities across all 4 stages.
+  - Added architecture & topology ASCII diagrams for Docker networking and data ingestion-to-decision pipeline.
+  - Documented full technology stack and updated repository directory tree.
+  - Added streamlined Docker Compose quick start guide with healthcheck instructions.
+  - Added manual local development setup instructions for both frontend and backend.
+  - Included automated test suite summary (30/30 tests) and type-check commands.
+  - Documented REST API route reference covering all 15 endpoints.
+  - Reaffirmed the 9 immutable core financial & engineering principles.
+
