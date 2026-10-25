@@ -42,6 +42,12 @@ This document defines the prioritized continuation roadmap for developers and AI
   - TypeScript: `npx tsc --noEmit` exited with **code 0 (zero errors)**.
   - Production Build: `npm run build` compiled all 23 routes with **code 0**.
   - Browser subagent verified login, register, password visibility, tagline, and dashboard.
+- [x] **Synthetic Benchmark Dataset (Acme Consulting Tech Ltd)**:
+  - Adapted excerpt to cashFlow multi-tenant schema in `backend/app/db/seeds/acme_synthetic_dataset.sql`.
+  - Automated seeding and analytical processing script in `backend/app/scripts/seed_acme_synthetic_data.py`.
+  - Seeded both PostgreSQL 16 (Docker) and SQLite (`cashflow.db`).
+  - Generated 7d/30d/90d cash forecasts, Monte Carlo simulations (P50 ₹2.88M, 0.1% breach probability), and constrained decision optimization plans.
+  - Verified API endpoints via `backend/app/scripts/verify_acme_api.py`.
 
 ---
 

@@ -199,3 +199,18 @@ This document records significant architectural, technical, and design decisions
 - **Chosen Approach**: Implemented tool-calling dispatcher in `assistant_service.py` querying verified domain methods (`get_actual_cash_balance`, `get_overdue_invoices`, `get_forecast_summary`, `get_simulation_summary`, `get_recommendations`). Answers cite verified data sources ("Verified Cleared Bank Ledger", etc.), include assumptions notes, and sanitize prompt injection delimiters.
 - **Reason**: Guarantees zero fabricated figures while providing intuitive conversational intelligence.
 - **Affected Files**: `backend/app/services/assistant_service.py`, `backend/app/api/v1/assistant.py`, `frontend/src/app/(dashboard)/assistant/page.tsx`.
+
+---
+
+### DEC-017: Synthetic Benchmark Dataset Ingestion & Analytical Pipeline Seeding
+- **Date**: 2026-10-25
+- **Status**: `ACTIVE`
+- **Context**: User provided a synthetic benchmark dataset for "Acme Consulting Tech Ltd" (id: `11111111-1111-1111-1111-111111111111`), with multi-tenant team members (Alice Owner, Bob Finance, Charlie Acct, David Viewer), bank accounts (HDFC Operating Account ₹845,000, ICICI Reserve Account ₹1,200,000), overdue invoices (INV-2026-101 Client B ₹250,000), transactions, and minimum cash reserve risk alerts (₹500,000 threshold in 38 days).
+- **Problem**: Raw SQL excerpts required alignment with cashFlow's multi-tenant architecture, strict column constraints (`slug`, `hashed_password`, `customer_name`, `total_amount`), and execution across both live PostgreSQL 16 Docker containers and local SQLite test databases, plus running the downstream analytical pipelines (multi-horizon forecasts, Monte Carlo simulations, constrained optimization).
+- **Chosen Approach**:
+  1. Authored `backend/app/db/seeds/acme_synthetic_dataset.sql` with valid schema mappings (`businesses`, `users` with Bcrypt hash, `business_memberships`, `financial_accounts`, `invoices`, `transactions`, `alert_rules`, `alert_events`, `risk_assessments`).
+  2. Implemented `backend/app/scripts/seed_acme_synthetic_data.py` synthesizing the exact 30-day ledger transactions (including neutral internal transfer of ₹700,000 between accounts) that yield target balances of ₹845,000 and ₹1,200,000, and triggering `ForecastingService`, `SimulationService`, `DecisionService`, and `AlertService`.
+  3. Linked active user sessions to the workspace for instant frontend accessibility.
+- **Reason**: Ensures realistic, end-to-end analytical data across all dashboard modules without compromising financial correctness or tenant isolation.
+- **Affected Files**: `backend/app/db/seeds/acme_synthetic_dataset.sql`, `backend/app/scripts/seed_acme_synthetic_data.py`, `backend/app/scripts/verify_acme_api.py`.
+

@@ -4,6 +4,30 @@ This document maintains a chronological development history of the **cashFlow** 
 
 ---
 
+## [2026-10-25] — Synthetic Benchmark Dataset: Acme Consulting Tech Ltd Ingestion & Analytics
+
+### Objective
+Ingest, adapt, and connect user-provided synthetic PostgreSQL test dataset for "Acme Consulting Tech Ltd" into the cashFlow multi-tenant platform, bridging opening balances to target operational balances, establishing team access, and executing downstream financial intelligence pipelines (multi-horizon forecasts, Monte Carlo simulations, constrained optimization solver, sentinel risk alerts).
+
+### Implementation Summary
+- **PostgreSQL Dataset Adaptation (`backend/app/db/seeds/acme_synthetic_dataset.sql`)**:
+  - Multi-tenant business: `Acme Consulting Tech Ltd` (ID: `11111111-1111-1111-1111-111111111111`, currency: `INR`, minimum cash buffer: `₹500,000.00`).
+  - Users & RBAC: `owner@acme.com` (OWNER), `finance@acme.com` (FINANCE_MANAGER), `acct@acme.com` (ACCOUNTANT), `viewer@acme.com` (VIEWER) with secure Bcrypt password hashes (`Password123!`), plus auto-linked active session user `fakeed@gmail.com`.
+  - Accounts: `acc-op-001` (HDFC Operating Account, Opening: ₹250,000.00 -> Ending: ₹845,000.00) and `acc-sav-002` (ICICI Reserve Account, Opening: ₹500,000.00 -> Ending: ₹1,200,000.00).
+  - Invoices: `inv-2026-001` (`INV-2026-101`, Client B, ₹250,000.00 OVERDUE) plus active client receivables.
+  - 30-Day Ledger: Synthesized client milestone inflows (₹1,600,000.00), operational expenses (₹305,000.00), and a neutral internal transfer (₹700,000.00 from HDFC to ICICI) cleanly separating liquid cash from transfers.
+  - Sentinel Alerts & Risk: Configured ₹500,000 cash reserve safety threshold with active warning event (`alert-001`) and `risk_assessments` model record.
+- **Automated Seeding & Analytical Processing Script (`backend/app/scripts/seed_acme_synthetic_data.py`)**:
+  - Automatically seeds both PostgreSQL 16 (Docker) and SQLite 3 (`cashflow.db`).
+  - Executes 7-day, 30-day, and 90-day cash projections via `ForecastingService`.
+  - Runs 1000-path stochastic Monte Carlo simulation via `SimulationService`.
+  - Configures hard financial goal and executes constrained decision optimization via `DecisionService`.
+- **API & System Verification (`backend/app/scripts/verify_acme_api.py`)**:
+  - Verified HTTP 200 responses across `/auth/login`, `/financial/overview`, `/invoices`, `/alerts/events`, `/forecasts`, `/simulations/latest`, and `/assistant/query`.
+  - Verified conversational assistant answers questions grounded in verified cleared ledger data.
+
+---
+
 ## [2026-10-24] — Stage 1: Foundation, Database, Security & Financial Data Import
 
 ### Objective

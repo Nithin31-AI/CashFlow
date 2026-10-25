@@ -180,3 +180,39 @@ ML model versioning, evaluation metric (MAPE/RMSE), metric value, sample size, p
 | `9c2481321bb2` | None | Initial schema creation (Stage 1 base tables) | 2026-10-24 |
 | `a1b2c3d4e5f6` | `9c2481321bb2` | Stage 2 financial engine: transactions, invoices, payments, reconciliation, forecasts, risks, anomalies, multi-currency | 2026-10-24 |
 | `b2c3d4e5f6a7` | `a1b2c3d4e5f6` | Stage 3 advanced AI: goals, simulations, scenarios, optimisation plans, recommendations, alerts, evaluations | 2026-10-24 |
+
+---
+
+## 4. Benchmark & Seed Datasets
+
+### 4.1. `Acme Consulting Tech Ltd` Synthetic Dataset
+- **Database Script**: [`backend/app/db/seeds/acme_synthetic_dataset.sql`](file:///c:/Users/NITHIN/OneDrive/Desktop/Cash_Flow/backend/app/db/seeds/acme_synthetic_dataset.sql)
+- **Seeding & Analytical Engine Runner**: [`backend/app/scripts/seed_acme_synthetic_data.py`](file:///c:/Users/NITHIN/OneDrive/Desktop/Cash_Flow/backend/app/scripts/seed_acme_synthetic_data.py)
+- **Business Profile**:
+  - `id`: `11111111-1111-1111-1111-111111111111`
+  - `name`: `Acme Consulting Tech Ltd`
+  - `currency`: `INR` (`₹`)
+  - `minimum_cash_reserve`: `₹500,000.00`
+- **Team Users**:
+  - `owner@acme.com` (`OWNER`), `finance@acme.com` (`FINANCE_MANAGER`), `acct@acme.com` (`ACCOUNTANT`), `viewer@acme.com` (`VIEWER`).
+  - Default password: `Password123!` (Bcrypt hashed).
+- **Accounts & Actual Liquid Balances**:
+  - `acc-op-001` (HDFC Operating Account): Opening ₹250,000.00 -> Ending ₹845,000.00.
+  - `acc-sav-002` (ICICI Reserve Account): Opening ₹500,000.00 -> Ending ₹1,200,000.00.
+  - Consolidated Liquid Cash: **₹2,045,000.00**.
+- **Invoices & Receivables**:
+  - `INV-2026-101`: Client B, ₹250,000.00 (`OVERDUE`).
+  - `INV-2026-102`: Enterprise Client Alpha, ₹450,000.00 (`SENT`).
+  - `INV-2026-103`: Global Digital Corp, ₹320,000.00 (`PAID`).
+- **30-Day Ledger**:
+  - Revenue inflows: ₹1,600,000.00 (Client receipts, retainer, cloud architecture milestones).
+  - Operating outflows: ₹305,000.00 (AWS infrastructure, office lease, engineering payroll, SaaS).
+  - Internal reserve transfer: ₹700,000.00 from HDFC to ICICI (neutral transfer, excluded from income/expense).
+- **Sentinel Alerts & Risk**:
+  - `alert-001`: `Minimum Cash Buffer Breach Risk` (Warning, projected buffer breach in 38 days against ₹500,000 reserve).
+  - `risk-001`: In `risk_assessments` model with mitigation recommendations.
+- **Analytical Outputs**:
+  - 7d, 30d, 90d cash forecasts.
+  - Monte Carlo simulation: 1,000 stochastic paths, P50 ₹2,886,777.18, reserve breach probability 0.1%.
+  - Constrained decision optimization plan: status `FEASIBLE`, ₹780,000 actionable mitigations.
+

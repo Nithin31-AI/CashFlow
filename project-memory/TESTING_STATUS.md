@@ -19,6 +19,7 @@
 
 | Test File & Case | Category | Result | Execution Time | Coverage & Assertions |
 | :--- | :--- | :--- | :--- | :--- |
+| `backend/app/scripts/verify_acme_api.py` | Benchmark / E2E API | `PASSED` | ~1.5s | Verifies end-to-end integration of Acme Consulting Tech Ltd across live PostgreSQL Docker container: auth login (Alice Owner), financial overview (₹2.045M liquid cash, ₹845k HDFC, ₹1.2M ICICI), invoices (INV-2026-101 overdue), alerts (buffer breach), 30d forecast (P50 ₹2.88M), and grounded assistant querying. |
 | `tests/test_auth.py::test_google_config_endpoint` | Auth / Google | `PASSED` | ~0.5s | Verifies public Google configuration endpoint (`GET /api/v1/auth/google/config`) returns `client_id` and `enabled` boolean. |
 | `tests/test_auth.py::test_google_auth_new_user_and_auto_workspace` | Auth / Google | `PASSED` | ~0.9s | Verifies registration via Google token, verifies email verification claims, automatically creates business workspace and assigns user as OWNER, confirms access token. |
 | `tests/test_auth.py::test_google_auth_existing_user_linking` | Auth / Google | `PASSED` | ~0.8s | Verifies existing email/password account can securely authenticate via Google token with matching verified email without duplicate account creation. |
