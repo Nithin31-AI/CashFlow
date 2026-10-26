@@ -366,7 +366,7 @@ class ApiClient {
       return res.json();
     } catch (err: any) {
       if (err.name === "TypeError" && (err.message === "Failed to fetch" || err.message?.includes("fetch"))) {
-        throw new Error("Unable to connect to the cashFlow server. Please ensure the backend is running at http://localhost:8000.");
+        throw new Error(`Unable to connect to the cashFlow server. Please ensure the backend is running at ${API_BASE}.`);
       }
       throw err;
     }
