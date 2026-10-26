@@ -1,4 +1,14 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+let API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+// In production the env var must be defined; in development we fall back to Docker default.
+if (!API_BASE) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is not defined. Please set it in Vercel environment variables."
+    );
+  } else {
+    API_BASE = "http://localhost:8000/api/v1";
+  }
+}
 
 export interface User {
   id: string;
