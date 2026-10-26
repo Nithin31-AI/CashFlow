@@ -17,7 +17,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { api, AssistantResponse } from "@/lib/api";
+import { api, AssistantResponse, API_BASE } from "@/lib/api";
 
 interface ChatMessage {
   id: string;
@@ -108,7 +108,7 @@ export default function AssistantPage() {
 
       let displayText = `Assistant query encountered an issue: ${errMsg}`;
       if (errMsg.includes("Unable to connect") || errMsg.includes("Failed to fetch")) {
-        displayText = "Unable to connect to the cashFlow backend server at http://localhost:8000. Please ensure the backend container or service is running and accessible.";
+        displayText = `Unable to connect to the cashFlow backend server at ${API_BASE}. Please ensure the backend service is running and accessible.`;
       } else if (errMsg.includes("401") || errMsg.includes("authenticated")) {
         displayText = "Your session has expired. Please sign in again to access financial intelligence.";
       } else if (errMsg.includes("403") || errMsg.includes("Forbidden") || errMsg.includes("permission")) {
