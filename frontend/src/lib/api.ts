@@ -1,15 +1,18 @@
-// Exported central API base URL with safe fallback.
-export let API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
-// If not defined, fall back to local Docker address and warn during build/runtime.
-if (!API_BASE) {
-  // During local development (or when building without Vercel env vars) use the Docker default.
-  API_BASE = "http://localhost:8000/api/v1";
+// Exported central API base URL with safe fallback and API version prefix.
+export let API_BASE = (() => {
+  const raw = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/g, "");
+  const apiPrefix = "/api/v1";
+  if (raw) {
+    return `${raw}${apiPrefix}`;
+  }
+  const fallback = "http://localhost:8000/api/v1";
   if (typeof console !== "undefined" && console.warn) {
     console.warn(
       "WARN: NEXT_PUBLIC_API_URL is not set – falling back to http://localhost:8000/api/v1. Set this variable in Vercel to point to your Render backend."
     );
   }
-}
+  return fallback;
+})();
 
 export interface User {
   id: string;
